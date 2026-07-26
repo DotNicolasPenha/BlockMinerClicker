@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Block Miner Clicker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --panel:#c6c6c6; --panel-dark:#8b8b8b; --panel-light:#ffffff; --panel-shadow:#373737;
+    --ink:#2b2b2b; --gold:#f6d32d; --accent:#5b8f3b; --danger:#b3160c;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:#0d0b08; font-family:'Press Start 2P', monospace; overflow:hidden; touch-action:manipulation; }
+  #app{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+  #gameContainer{
+    position:relative; width:100%; max-width:480px; height:100%; max-height:900px;
+    aspect-ratio:9/16; background:#0d0b08; border-left:4px solid #000; border-right:4px solid #000; overflow:hidden;
+  }
+  #gameCanvas{
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    image-rendering:pixelated; image-rendering:-moz-crisp-edges; image-rendering:crisp-edges; display:block;
+  }
+  #hud{ position:absolute; top:0; left:0; right:0; padding:8px 8px 0; display:flex; flex-direction:column; gap:5px; pointer-events:none; z-index:5; }
+  .pixel-panel{
+    background:var(--panel);
+    border-top:3px solid var(--panel-light); border-left:3px solid var(--panel-light);
+    border-bottom:3px solid var(--panel-shadow); border-right:3px solid var(--panel-shadow);
+    color:var(--ink); padding:6px 8px; font-size:9px; line-height:1.6;
+  }
+  #resourceRow{display:flex; justify-content:space-between; align-items:center;}
+  #resourceDisplay{color:#1a5c1a; font-size:12px;}
+  #rankBadge{display:flex; align-items:center; gap:4px; font-size:7px;}
+  #rankBadge span{padding:2px 4px; border:1px solid #000;}
+  #idleTierRow{display:flex; justify-content:space-between; font-size:7px; color:#444; gap:4px;}
+  #idleTierRow span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #comboBarWrap{ position:absolute; top:92px; left:8px; right:8px; height:8px; background:#000; border:2px solid #000; z-index:5; }
+  #comboBar{ height:100%; width:0%; background:linear-gradient(90deg,#ffcc00,#ff5500); transition:width 0.08s linear; }
+  #bottomNav{ position:absolute; bottom:8px; left:8px; right:8px; display:flex; gap:5px; z-index:5; }
+  .mc-btn{
+    flex:1; background:var(--panel);
+    border-top:3px solid var(--panel-light); border-left:3px solid var(--panel-light);
+    border-bottom:3px solid var(--panel-shadow); border-right:3px solid var(--panel-shadow);
+    color:var(--ink); font-family:'Press Start 2P', monospace; font-size:7.5px; padding:11px 2px; text-align:center; cursor:pointer;
+  }
+  .mc-btn:active{
+    border-top:3px solid var(--panel-shadow); border-left:3px solid var(--panel-shadow);
+    border-bottom:3px solid var(--panel-light); border-right:3px solid var(--panel-light);
+  }
+  .panel-overlay{ position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; z-index:20; }
+  .panel-overlay.hidden{display:none;}
+  .sheet{
+    width:100%; max-height:82%; background:var(--panel);
+    border-top:4px solid var(--panel-light); border-left:4px solid var(--panel-light); border-right:4px solid var(--panel-shadow);
+    display:flex; flex-direction:column; color:var(--ink);
+  }
+  .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; }
+  .sheet-header .close-x{ background:var(--danger); color:#fff; border:2px solid #000; width:22px; height:22px; text-align:center; line-height:20px; cursor:pointer; font-size:10px; }
+  .tabs{display:flex; gap:3px; padding:8px 8px 0;}
+  .tab-btn{ flex:1; font-family:'Press Start 2P', monospace; font-size:6.5px; padding:8px 1px; cursor:pointer; background:var(--panel-dark); color:#eee; border:2px solid var(--panel-shadow); }
+  .tab-btn.active{background:var(--gold); color:#3a2a00;}
+  #shopList, #prestigeContent, #offlineContent, #collectionGrid{ padding:10px; overflow-y:auto; font-size:8px; }
+
+  .upgrade-card{
+    display:flex; align-items:center; gap:8px; background:#dcdcdc;
+    border-top:2px solid #fff; border-left:2px solid #fff; border-bottom:2px solid #6b6b6b; border-right:2px solid #6b6b6b;
+    padding:8px; margin-bottom:8px;
+  }
+  .upgrade-icon{ width:32px; height:32px; flex:none; border:2px solid #000; background:#1c1c1c; display:flex; align-items:center; justify-content:center; }
+  .upgrade-icon canvas{ width:28px; height:28px; image-rendering:pixelated; }
+  .upgrade-info{flex:1; line-height:1.7; min-width:0;}
+  .upgrade-info .u-name{font-size:8.5px; color:#1a1a1a;}
+  .upgrade-info .u-desc{font-size:6.8px; color:#555;}
+  .upgrade-info .u-level{font-size:6.8px; color:#7a3ba0;}
+  .buy-btn{
+    font-family:'Press Start 2P', monospace; font-size:6.8px; padding:8px 5px; white-space:nowrap;
+    background:var(--accent); color:#fff;
+    border-top:2px solid #8fd15f; border-left:2px solid #8fd15f; border-bottom:2px solid #2f4f1f; border-right:2px solid #2f4f1f;
+    cursor:pointer;
+  }
+  .buy-btn:disabled{ background:#8a8a8a; color:#ccc; cursor:default; border-color:#aaa #555 #555 #aaa; }
+  .buy-btn.locked{ background:#555; color:#999; }
+  .buy-btn.equipped{ background:#3a6fd8; color:#fff; }
+
+  #prestigeContent p, #offlineContent p{margin:0 0 10px; line-height:1.8;}
+  #prestigeConfirm{width:100%; margin-top:6px;}
+  #rankProgressWrap{ background:#000; height:14px; border:2px solid #000; margin:6px 0 14px; }
+  #rankProgressBar{ height:100%; width:0%; background:linear-gradient(90deg,#c9a227,#f6d32d); }
+
+  #collectionGrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .col-item{
+    aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#2b2b2b; border:2px solid #555; padding:4px; text-align:center; gap:3px;
+  }
+  .col-item .ci-icon{ width:32px; height:32px; }
+  .col-item .ci-icon canvas{ width:32px; height:32px; image-rendering:pixelated; }
+  .col-item .ci-name{ font-size:5.8px; color:#eee; line-height:1.3; }
+  .col-item .ci-rarity{ font-size:5.2px; }
+  .col-item.locked{ opacity:0.55; }
+
+  .toast{
+    position:absolute; top:110px; left:50%; transform:translateX(-50%);
+    background:#000; color:#fff; padding:8px 12px; font-size:8px; border:2px solid #fff;
+    z-index:30; white-space:nowrap; pointer-events:none; animation:toastAnim 2.4s ease forwards;
+  }
+  @keyframes toastAnim{ 0%{opacity:0; transform:translate(-50%,-10px);} 12%{opacity:1; transform:translate(-50%,0);} 80%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-10px);} }
+
+  .rankup-flash{
+    position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; flex-direction:column;
+    background:rgba(0,0,0,0.6); pointer-events:none; animation:rankFade 2.2s ease forwards;
+  }
+  .rankup-flash .big{ font-size:14px; color:#f6d32d; text-shadow:2px 2px 0 #000; margin-bottom:10px;}
+  .rankup-flash .small{ font-size:9px; color:#fff; text-shadow:2px 2px 0 #000; }
+  @keyframes rankFade{ 0%{opacity:0;} 10%{opacity:1;} 80%{opacity:1;} 100%{opacity:0;} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="360" height="640"></canvas>
+
+    <div id="hud">
+      <div class="pixel-panel" id="resourceRow">
+        <span id="resourceDisplay">0</span>
+        <span id="rankBadge"><span id="rankName">Bronze I</span></span>
+      </div>
+      <div class="pixel-panel" id="idleTierRow">
+        <span id="idleDisplay">+0/seg</span>
+        <span id="tierDisplay">Grama</span>
+      </div>
+    </div>
+
+    <div id="comboBarWrap"><div id="comboBar"></div></div>
+
+    <div id="bottomNav">
+      <button class="mc-btn" id="btnShop">LOJA</button>
+      <button class="mc-btn" id="btnPrestige">PATENTE</button>
+      <button class="mc-btn" id="btnCollection">COLEÇÃO</button>
+    </div>
+
+    <div class="panel-overlay hidden" id="shopOverlay">
+      <div class="sheet" style="height:74%">
+        <div class="sheet-header"><span>LOJA DE UPGRADES</span><span class="close-x" data-close="shopOverlay">X</span></div>
+        <div class="tabs">
+          <div class="tab-btn active" data-tab="pickaxe">PICARETAS</div>
+          <div class="tab-btn" data-tab="enchant">ENCANTOS</div>
+          <div class="tab-btn" data-tab="miner">MINERADORES</div>
+        </div>
+        <div id="shopList"></div>
+      </div>
+    </div>
+
+    <div class="panel-overlay hidden" id="prestigeOverlay">
+      <div class="sheet" style="height:62%">
+        <div class="sheet-header"><span>PATENTE DE MINERADOR</span><span class="close-x" data-close="prestigeOverlay">X</span></div>
+        <div id="prestigeContent"></div>
+      </div>
+    </div>
+
+    <div class="panel-overlay hidden" id="collectionOverlay">
+      <div class="sheet" style="height:78%">
+        <div class="sheet-header"><span id="collectionHeader">MURAL DE RARIDADES</span><span class="close-x" data-close="collectionOverlay">X</span></div>
+        <div id="collectionGrid"></div>
+      </div>
+    </div>
+
+    <div class="panel-overlay hidden" id="offlineOverlay">
+      <div class="sheet" style="height:40%">
+        <div class="sheet-header"><span>BEM-VINDO DE VOLTA</span><span class="close-x" data-close="offlineOverlay">X</span></div>
+        <div id="offlineContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   ÍCONES PIXEL ART (substituem emojis em toda a interface)
+========================================================= */
+function newIconCanvas(){
+  var c = document.createElement('canvas');
+  c.width = 16; c.height = 16;
+  return c;
+}
+function makeIcon(kind, color){
+  var c = newIconCanvas();
+  var g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  color = color || '#cccccc';
+
+  switch(kind){
+    case 'pickaxe':
+      g.fillStyle = '#6b4423';
+      g.fillRect(6,6,2,9); g.fillRect(8,4,2,9);
+      g.fillStyle = color;
+      g.fillRect(1,1,6,3); g.fillRect(9,1,6,3); g.fillRect(6,0,4,3);
+      g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1;
+      g.strokeRect(1,1,6,3); g.strokeRect(9,1,6,3);
+      break;
+    case 'fortune':
+      g.fillStyle = color;
+      g.fillRect(3,10,10,3); g.fillRect(4,7,8,3); g.fillRect(5,4,6,3);
+      g.strokeStyle = 'rgba(0,0,0,0.35)';
+      g.strokeRect(3,10,10,3); g.strokeRect(4,7,8,3); g.strokeRect(5,4,6,3);
+      break;
+    case 'luck':
+      g.fillStyle = color;
+      g.fillRect(6,2,4,3); g.fillRect(2,5,4,4); g.fillRect(10,5,4,4);
+      g.fillRect(6,7,4,3); g.fillRect(7,10,2,5);
+      break;
+    case 'precision':
+      g.strokeStyle = color; g.lineWidth = 2;
+      g.strokeRect(2,2,12,12); g.strokeRect(5,5,6,6);
+      g.fillStyle = color; g.fillRect(7,7,2,2);
+      break;
+    case 'berserker':
+      g.fillStyle = color;
+      g.fillRect(7,0,2,5); g.fillRect(4,4,3,5); g.fillRect(9,4,3,5); g.fillRect(6,8,4,7);
+      break;
+    case 'midnight':
+      g.fillStyle = color;
+      g.beginPath(); g.arc(8,8,6,0,Math.PI*2); g.fill();
+      g.fillStyle = '#0d0b08';
+      g.beginPath(); g.arc(11,6,5,0,Math.PI*2); g.fill();
+      break;
+    case 'greed':
+      g.fillStyle = color;
+      g.beginPath(); g.arc(8,8,6,0,Math.PI*2); g.fill();
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(7,3,2,10);
+      break;
+    case 'fragment':
+      g.fillStyle = color;
+      g.fillRect(8,0,3,5); g.fillRect(5,5,3,3); g.fillRect(8,8,3,3); g.fillRect(5,11,3,5);
+      break;
+    case 'minerLuck':
+      var cols = ['#ff3b3b','#ff9800','#ffd700','#4caf50','#2196f3','#9c27b0'];
+      for(var r=0;r<cols.length;r++){
+        g.strokeStyle = cols[r]; g.lineWidth = 1;
+        g.beginPath(); g.arc(8,15,3+r,Math.PI,Math.PI*2); g.stroke();
+      }
+      break;
+    case 'miner':
+      g.fillStyle = color; g.fillRect(4,1,8,6);
+      g.fillStyle = '#0d0b08'; g.fillRect(6,3,1,1); g.fillRect(9,3,1,1);
+      g.fillStyle = shade(color,-30); g.fillRect(3,8,10,7);
+      break;
+    case 'locked':
+      g.fillStyle = '#555';
+      g.fillRect(4,7,8,7);
+      g.strokeStyle = '#555'; g.lineWidth = 2;
+      g.beginPath(); g.arc(8,6,3,Math.PI,0); g.stroke();
+      g.fillStyle = '#333'; g.fillRect(7,9,2,3);
+      break;
+    case 'col_comum':
+      g.fillStyle = color;
+      g.fillRect(5,6,6,5); g.fillRect(4,8,2,3); g.fillRect(10,7,2,3);
+      break;
+    case 'col_incomum':
+      g.fillStyle = color;
+      g.fillRect(6,3,4,2); g.fillRect(4,5,8,3); g.fillRect(6,8,4,4);
+      break;
+    case 'col_raro':
+      g.fillStyle = color;
+      g.fillRect(5,2,6,2); g.fillRect(3,4,10,4); g.fillRect(5,8,6,3); g.fillRect(7,11,2,2);
+      break;
+    case 'col_epico':
+      g.fillStyle = color;
+      g.fillRect(2,10,12,3); g.fillRect(2,6,2,4); g.fillRect(7,4,2,6); g.fillRect(12,6,2,4);
+      break;
+    case 'col_lendario':
+      g.fillStyle = color;
+      g.fillRect(7,1,2,14); g.fillRect(1,7,14,2);
+      g.fillRect(3,3,2,2); g.fillRect(11,3,2,2); g.fillRect(3,11,2,2); g.fillRect(11,11,2,2);
+      break;
+    case 'col_mitico':
+      g.fillStyle = '#ff3b6b'; g.fillRect(7,1,2,14);
+      g.fillStyle = '#4bb4ff'; g.fillRect(1,7,14,2);
+      g.fillStyle = '#ffd700'; g.fillRect(5,5,6,6);
+      g.fillStyle = '#0d0b08'; g.fillRect(6,6,4,4);
+      break;
+    default:
+      g.fillStyle = color; g.fillRect(3,3,10,10);
+  }
+  return c;
+}
+function iconEl(kind, color, size){
+  var wrap = document.createElement('div');
+  var canvasEl = makeIcon(kind, color);
+  canvasEl.style.width = (size||28)+'px';
+  canvasEl.style.height = (size||28)+'px';
+  canvasEl.style.imageRendering = 'pixelated';
+  wrap.appendChild(canvasEl);
+  return wrap;
+}
+
+/* =========================================================
+   CONFIG: TIERS DE BLOCO (minérios reais + blocos mágicos no fim)
+========================================================= */
+var TIER_DEFS = [
+  {id:'grass',     name:'Grama',                     special:'grass', base:'#6a9a44', dark:'#4a7530', light:'#87b95e', dirt:'#8b5a2b'},
+  {id:'stone',     name:'Pedra'},
+  {id:'coal',      name:'Carvão',                     speckle:'#232323'},
+  {id:'copper',    name:'Cobre',                      speckle:'#c8722f'},
+  {id:'iron',      name:'Ferro',                      speckle:'#d9c9a3'},
+  {id:'zinc',      name:'Zinco (Esfalerita)',         speckle:'#5a4632'},
+  {id:'lead',      name:'Chumbo (Galena)',            speckle:'#9fb0c9'},
+  {id:'tin',       name:'Estanho (Cassiterita)',      speckle:'#4a3728'},
+  {id:'bauxite',   name:'Bauxita (Alumínio)',         speckle:'#b5651d'},
+  {id:'chromite',  name:'Cromita',                     speckle:'#3b2f2a'},
+  {id:'manganese', name:'Manganês',                    speckle:'#4a4550'},
+  {id:'nickel',    name:'Níquel',                      speckle:'#a8b892'},
+  {id:'cobalt',    name:'Cobalto',                     speckle:'#4a6fa5'},
+  {id:'tungsten',  name:'Tungstênio',                  speckle:'#dcdcdc', base:'#3a3a3a', dark:'#242424', light:'#4c4c4c'},
+  {id:'titanium',  name:'Titânio',                     speckle:'#c9d1d9'},
+  {id:'gold',      name:'Ouro',                        speckle:'#f6d32d'},
+  {id:'platinum',  name:'Platina',                     speckle:'#e6e6ef'},
+  {id:'uranium',   name:'Urânio',                      speckle:'#9fe94a', special:'glow'},
+  {id:'redstone',  name:'Redstone',                    speckle:'#b3160c'},
+  {id:'lapis',     name:'Lápis-Lazúli',                base:'#7c7c8c', dark:'#5e5e70', light:'#9494a8', speckle:'#1b4fa0'},
+  {id:'quartz',    name:'Quartzo do Nether',           base:'#8a7d78', dark:'#6e6360', light:'#c9bdb6', speckle:'#f2e9dc'},
+  {id:'diamond',   name:'Diamante',                    speckle:'#4be3d8'},
+  {id:'emerald',   name:'Esmeralda',                   speckle:'#17c964'},
+  {id:'amethyst',  name:'Ametista',                    base:'#5b3f7a', dark:'#412c5c', light:'#8763b3', speckle:'#c78bff'},
+  {id:'obsidian',  name:'Obsidiana',                   base:'#241833', dark:'#160e20', light:'#3b2361', speckle:'#4a2f78'},
+  {id:'netherite', name:'Netherite',                   base:'#3a2f2f', dark:'#241c1c', light:'#4f4040', speckle:'#b5502b'},
+  {id:'crystal',   name:'Cristal Ancestral',           base:'#0f3a3a', dark:'#092626', light:'#1c5c5c', speckle:'#3af0d8', special:'glow'},
+  {id:'stellar',   name:'Núcleo Estelar',              base:'#1a1440', dark:'#0d0a28', light:'#2c2266', speckle:'#8fa8ff', special:'glow'},
+  {id:'void',      name:'Bloco do Vazio',              base:'#100014', dark:'#08000a', light:'#22002c', speckle:'#ff2ec4', special:'glow'},
+  {id:'eternal',   name:'Bloco Eterno',                base:'#2b2b2b', dark:'#181818', light:'#3f3f3f', speckle:'#f6d32d', special:'eternal'}
+];
+
+var TIERS = TIER_DEFS.map(function(d, i){
+  return {
+    id:d.id, name:d.name,
+    baseHp: Math.max(6, Math.round(8*Math.pow(1.34,i))),
+    baseValue: Math.max(1, Math.round(1*Math.pow(1.50,i))),
+    goal: 10 + Math.floor(i*1.3),
+    base:d.base||'#8a8a8a', dark:d.dark||'#6e6e6e', light:d.light||'#a3a3a3',
+    speckle:d.speckle, special:d.special, dirt:d.dirt
+  };
+});
+TIERS[TIERS.length-1].goal = Infinity;
+
+/* =========================================================
+   PICARETAS (equipamento sequencial e colecionável)
+========================================================= */
+var PICKAXES = [
+  {id:'wood',      name:'Picareta de Madeira',   power:1,    cost:0,         color:'#a97c50'},
+  {id:'stone',     name:'Picareta de Pedra',     power:3,    cost:150,       color:'#9a9a9a'},
+  {id:'copper',    name:'Picareta de Cobre',     power:7,    cost:900,       color:'#c8722f'},
+  {id:'iron',      name:'Picareta de Ferro',     power:16,   cost:5000,      color:'#d8d8d8'},
+  {id:'gold',      name:'Picareta de Ouro',      power:36,   cost:26000,     color:'#f6d32d'},
+  {id:'diamond',   name:'Picareta de Diamante',  power:85,   cost:140000,    color:'#4be3d8'},
+  {id:'netherite', name:'Picareta de Netherite', power:200,  cost:750000,    color:'#b5502b'},
+  {id:'runic',     name:'Picareta Rúnica',       power:480,  cost:4200000,   color:'#a259ff'},
+  {id:'chaos',     name:'Picareta do Caos',      power:1150, cost:24000000,  color:'#ff3b3b'},
+  {id:'celestial', name:'Picareta Celestial',    power:2800, cost:140000000, color:'#fff4c2'}
+];
+
+/* =========================================================
+   ENCANTAMENTOS E MINERADORES
+========================================================= */
+var UPGRADES = [
+  {id:'fortune',   name:'Fortuna',               desc:'+10% recursos por bloco quebrado',          category:'enchant', baseCost:25,     costMult:1.18, iconKind:'fortune',   color:'#f6d32d'},
+  {id:'luck',      name:'Sorte do Golpe',        desc:'+2% chance de crítico (máx 50%)',            category:'enchant', baseCost:40,     costMult:1.20, iconKind:'luck',      color:'#4caf50'},
+  {id:'precision', name:'Precisão',              desc:'+0.5x multiplicador de crítico',             category:'enchant', baseCost:60,     costMult:1.20, iconKind:'precision', color:'#ff9800'},
+  {id:'berserker', name:'Fúria Berserker',       desc:'Combo alto causa ainda mais dano',           category:'enchant', baseCost:120,    costMult:1.22, iconKind:'berserker', color:'#ff1744'},
+  {id:'midnight',  name:'Toque da Meia-Noite',   desc:'Chance de quebrar o bloco instantaneamente', category:'enchant', baseCost:500,    costMult:1.30, iconKind:'midnight',  color:'#673ab7'},
+  {id:'greed',     name:'Ganância',              desc:'Chance de dobrar os recursos do bloco',      category:'enchant', baseCost:900,    costMult:1.28, iconKind:'greed',     color:'#ffd700'},
+  {id:'fragment',  name:'Fragmentação',          desc:'Chance de golpe duplo por clique',           category:'enchant', baseCost:1400,   costMult:1.26, iconKind:'fragment',  color:'#00e5ff'},
+  {id:'minerLuck', name:'Sorte do Minerador',    desc:'Aumenta a chance de achar itens raros',      category:'enchant', baseCost:2000,   costMult:1.35, iconKind:'minerLuck', color:'#ff4fd8'},
+
+  {id:'minerAldeao',   name:'Aldeão Minerador',        desc:'+1 recurso/segundo (idle)',      category:'miner', baseCost:50,       costMult:1.15, iconKind:'miner', color:'#c9986b'},
+  {id:'minerFerreiro', name:'Anão Ferreiro',           desc:'+4 recursos/segundo (idle)',     category:'miner', baseCost:250,      costMult:1.16, iconKind:'miner', color:'#e0965a'},
+  {id:'minerGolem',    name:'Golem de Ferro',          desc:'+15 recursos/segundo (idle)',    category:'miner', baseCost:1500,     costMult:1.17, iconKind:'miner', color:'#d8d8d8'},
+  {id:'minerGolemD',   name:'Golem de Diamante',       desc:'+60 recursos/segundo (idle)',    category:'miner', baseCost:9000,     costMult:1.18, iconKind:'miner', color:'#4be3d8'},
+  {id:'minerEsqueleto',name:'Exército de Esqueletos',  desc:'+220 recursos/segundo (idle)',   category:'miner', baseCost:55000,    costMult:1.19, iconKind:'miner', color:'#e5e5c8'},
+  {id:'minerPiglin',   name:'Piglin Brutal',           desc:'+800 recursos/segundo (idle)',   category:'miner', baseCost:340000,   costMult:1.20, iconKind:'miner', color:'#ff9fc2'},
+  {id:'minerDragao',   name:'Dragão do Ender',         desc:'+3000 recursos/segundo (idle)',  category:'miner', baseCost:2100000,  costMult:1.21, iconKind:'miner', color:'#8a2be2'},
+  {id:'minerTita',     name:'Titã do Vazio',           desc:'+12000 recursos/segundo (idle)', category:'miner', baseCost:14000000, costMult:1.22, iconKind:'miner', color:'#ff2ec4'}
+];
+
+/* =========================================================
+   PATENTES (estilo Free Fire) — 8 patentes x 5 sub-níveis
+========================================================= */
+var RANK_NAMES  = ['Bronze','Prata','Ouro','Platina','Diamante','Mestre','Grão-Mestre','Lendário'];
+var RANK_COLORS = ['#8a5a3a','#b0b0b8','#f6d32d','#2fd9c4','#4bb4ff','#a259ff','#ff5e3a','#ff4fd8'];
+var RANK_SUB = ['I','II','III','IV','V'];
+var RANK_STEPS_TOTAL = RANK_NAMES.length * RANK_SUB.length;
+
+var RANK_THRESHOLDS = (function(){
+  var arr = [0];
+  for(var i=1;i<RANK_STEPS_TOTAL;i++){ arr.push(arr[i-1] + Math.round(2 + i*i*0.55)); }
+  return arr;
+})();
+
+function getRankStep(diamonds){
+  var step = 0;
+  for(var i=0;i<RANK_THRESHOLDS.length;i++){ if(diamonds >= RANK_THRESHOLDS[i]) step = i; else break; }
+  return step;
+}
+function getRankInfo(step){
+  step = Math.min(step, RANK_STEPS_TOTAL-1);
+  var tierIdx = Math.floor(step/5); var subIdx = step%5;
+  return { tierIdx:tierIdx, subIdx:subIdx, name: RANK_NAMES[tierIdx]+' '+RANK_SUB[subIdx], color: RANK_COLORS[tierIdx], step: step };
+}
+
+/* =========================================================
+   ITENS COLECIONÁVEIS
+========================================================= */
+var RARITIES = [
+  {key:'comum',    name:'Comum',    color:'#cfcfcf', chance:0.0040},
+  {key:'incomum',  name:'Incomum',  color:'#4caf50', chance:0.0016},
+  {key:'raro',     name:'Raro',     color:'#2196f3', chance:0.00055},
+  {key:'epico',    name:'Épico',    color:'#9c27b0', chance:0.00018},
+  {key:'lendario', name:'Lendário', color:'#ffd700', chance:0.00005},
+  {key:'mitico',   name:'Mítico',   color:'#ff3b6b', chance:0.00001}
+];
+
+var COLLECTIBLES = [
+  {id:'c1', name:'Pedregulho Redondo', rarity:'comum'},
+  {id:'c2', name:'Pena Solta',         rarity:'comum'},
+  {id:'c3', name:'Corda Puída',        rarity:'comum'},
+  {id:'c4', name:'Prego Enferrujado',  rarity:'comum'},
+  {id:'c5', name:'Bacia de Ferro',     rarity:'comum'},
+
+  {id:'i1', name:'Cristal Verde',      rarity:'incomum'},
+  {id:'i2', name:'Amuleto da Sorte',   rarity:'incomum'},
+  {id:'i3', name:'Mapa Rasgado',       rarity:'incomum'},
+  {id:'i4', name:'Sino de Vento',      rarity:'incomum'},
+  {id:'i5', name:'Frasco de Poção',    rarity:'incomum'},
+
+  {id:'r1', name:'Núcleo de Gelo',     rarity:'raro'},
+  {id:'r2', name:'Pergaminho Arcano',  rarity:'raro'},
+  {id:'r3', name:'Anel Azulado',       rarity:'raro'},
+  {id:'r4', name:'Coração Marinho',    rarity:'raro'},
+  {id:'r5', name:'Chave Antiga',       rarity:'raro'},
+
+  {id:'e1', name:'Coroa Sombria',      rarity:'epico'},
+  {id:'e2', name:'Fragmento de Meteoro', rarity:'epico'},
+  {id:'e3', name:'Olho do Vazio',      rarity:'epico'},
+  {id:'e4', name:'Adaga Rúnica',       rarity:'epico'},
+  {id:'e5', name:'Elmo do Guardião',   rarity:'epico'},
+
+  {id:'l1', name:'Coração de Dragão',  rarity:'lendario'},
+  {id:'l2', name:'Machado Solar',      rarity:'lendario'},
+  {id:'l3', name:'Estatueta Dourada',  rarity:'lendario'},
+  {id:'l4', name:'Grimório Perdido',   rarity:'lendario'},
+  {id:'l5', name:'Cetro Real',         rarity:'lendario'},
+
+  {id:'m1', name:'Núcleo Estelar',     rarity:'mitico'},
+  {id:'m2', name:'Lágrima do Criador', rarity:'mitico'},
+  {id:'m3', name:'Semente do Cosmos',  rarity:'mitico'},
+  {id:'m4', name:'Fragmento do Vazio Eterno', rarity:'mitico'},
+  {id:'m5', name:'Coroa dos Deuses',   rarity:'mitico'}
+];
+
+function rarityInfo(key){
+  for(var i=0;i<RARITIES.length;i++){ if(RARITIES[i].key===key) return RARITIES[i]; }
+  return RARITIES[0];
+}
+
+var SAVE_KEY = 'blockMinerClickerSave_v3';
+
+/* =========================================================
+   ESTADO
+========================================================= */
+var state = null;
+function defaultState(){
+  return {
+    resources:0, totalEarned:0, diamonds:0, pickaxeIndex:0,
+    tierIndex:0, blocksBrokenInTier:0,
+    blockHp:TIERS[0].baseHp, blockMaxHp:TIERS[0].baseHp,
+    upgrades:{
+      fortune:0, luck:0, precision:0, berserker:0, midnight:0, greed:0, fragment:0, minerLuck:0,
+      minerAldeao:0, minerFerreiro:0, minerGolem:0, minerGolemD:0, minerEsqueleto:0, minerPiglin:0, minerDragao:0, minerTita:0
+    },
+    clickPower:1, critChance:0.05, critMult:2, fortuneMult:1, idlePerSec:0,
+    comboCount:0, lastClickTime:0, collection:{}, lastSave:Date.now()
+  };
+}
+function rankMult(){ return 1 + getRankStep(state.diamonds)*0.05; }
+function recomputeStats(){
+  var u = state.upgrades;
+  state.clickPower  = PICKAXES[state.pickaxeIndex].power;
+  state.critChance  = Math.min(0.5, 0.05 + u.luck*0.02);
+  state.critMult    = 2 + u.precision*0.5;
+  state.fortuneMult = 1 + u.fortune*0.1;
+  state.idlePerSec  = u.minerAldeao*1 + u.minerFerreiro*4 + u.minerGolem*15 + u.minerGolemD*60 +
+                       u.minerEsqueleto*220 + u.minerPiglin*800 + u.minerDragao*3000 + u.minerTita*12000;
+}
+function calcDiamondGain(total){ return Math.floor(Math.sqrt(Math.max(0,total)/1000)); }
+
+/* =========================================================
+   SAVE / LOAD (apenas autosave em localStorage)
+========================================================= */
+function save(){
+  state.lastSave = Date.now();
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){}
+}
+function load(){
+  var raw = null;
+  try{ raw = localStorage.getItem(SAVE_KEY); }catch(e){}
+  if(!raw){ state = defaultState(); return; }
+  try{
+    var loaded = JSON.parse(raw);
+    state = defaultState();
+    for(var k in loaded){
+      if(k==='upgrades' || k==='collection'){ for(var kk in loaded[k]){ state[k][kk] = loaded[k][kk]; } }
+      else { state[k] = loaded[k]; }
+    }
+    recomputeStats();
+    var elapsedSec = Math.min((Date.now() - state.lastSave)/1000, 8*3600);
+    if(elapsedSec > 5 && state.idlePerSec > 0){
+      var gained = Math.floor(state.idlePerSec * rankMult() * state.fortuneMult * elapsedSec);
+      if(gained > 0){
+        state.resources += gained; state.totalEarned += gained;
+        showOfflinePopup(gained, elapsedSec);
+      }
+    }
+  }catch(e){ state = defaultState(); }
+}
+
+/* =========================================================
+   PRNG determinístico + helpers de cor
+========================================================= */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  return {r:parseInt(hex.substring(0,2),16), g:parseInt(hex.substring(2,4),16), b:parseInt(hex.substring(4,6),16)};
+}
+function shade(hex, amt){
+  var c = hexToRgb(hex);
+  return 'rgb('+Math.max(0,Math.min(255,c.r+amt))+','+Math.max(0,Math.min(255,c.g+amt))+','+Math.max(0,Math.min(255,c.b+amt))+')';
+}
+
+/* =========================================================
+   TEXTURAS PIXEL ART DOS BLOCOS
+========================================================= */
+var TEX_SIZE = 16;
+var textureCache = {};
+function buildTexture(tier){
+  var c = document.createElement('canvas'); c.width = TEX_SIZE; c.height = TEX_SIZE;
+  var ctx = c.getContext('2d');
+  var rng = mulberry32(tier.id.length*7919 + tier.baseHp);
+
+  if(tier.special === 'grass'){
+    ctx.fillStyle = tier.dirt; ctx.fillRect(0,0,TEX_SIZE,TEX_SIZE);
+    for(var y=0;y<TEX_SIZE;y++){
+      for(var x=0;x<TEX_SIZE;x++){
+        var n = rng(); var col = tier.dirt;
+        if(y < 4){ col = n<0.5? tier.base : tier.light; }
+        else if(y===4){ col = n<0.6 ? tier.dark : tier.dirt; }
+        else { col = n<0.15 ? shade(tier.dirt,-20) : tier.dirt; }
+        ctx.fillStyle = col; ctx.fillRect(x,y,1,1);
+      }
+    }
+  } else {
+    for(var y2=0;y2<TEX_SIZE;y2++){
+      for(var x2=0;x2<TEX_SIZE;x2++){
+        var n2 = rng(); var col2 = tier.base;
+        if(n2 < 0.18) col2 = tier.dark; else if(n2 > 0.9) col2 = tier.light;
+        ctx.fillStyle = col2; ctx.fillRect(x2,y2,1,1);
+      }
+    }
+    if(tier.speckle){
+      var clusters = 4 + Math.floor(rng()*4);
+      for(var i=0;i<clusters;i++){
+        var cx = 1 + Math.floor(rng()*(TEX_SIZE-2));
+        var cy = 1 + Math.floor(rng()*(TEX_SIZE-2));
+        var shape = [[0,0],[1,0],[0,1],[1,1]];
+        for(var s=0;s<shape.length;s++){
+          if(rng()<0.75){ ctx.fillStyle = tier.speckle; ctx.fillRect(cx+shape[s][0], cy+shape[s][1], 1, 1); }
+        }
+      }
+    }
+  }
+  return c;
+}
+function getTexture(tier){
+  if(!textureCache[tier.id]) textureCache[tier.id] = buildTexture(tier);
+  return textureCache[tier.id];
+}
+var crackCache = [];
+function buildCrackStage(stage){
+  var c = document.createElement('canvas'); c.width=TEX_SIZE; c.height=TEX_SIZE;
+  var ctx = c.getContext('2d'); var rng = mulberry32(9000+stage);
+  var count = 6 + stage*10;
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  for(var i=0;i<count;i++){ ctx.fillRect(Math.floor(rng()*TEX_SIZE), Math.floor(rng()*TEX_SIZE), 1, 1); }
+  return c;
+}
+for(var s=0; s<4; s++){ crackCache.push(buildCrackStage(s)); }
+
+/* =========================================================
+   ÁUDIO
+========================================================= */
+var audioCtx = null;
+function ensureAudio(){
+  if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; } }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+}
+function beep(freq, dur, type, vol, delay){
+  if(!audioCtx) return;
+  type = type||'square'; vol = vol==null?0.15:vol; delay = delay||0;
+  var t0 = audioCtx.currentTime + delay;
+  var osc = audioCtx.createOscillator(); var gain = audioCtx.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(vol, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0+dur);
+}
+function playClickSound(isCrit){ beep(isCrit?880:520, 0.08, 'square', 0.10); }
+function playBreakSound(){ beep(220,0.15,'sawtooth',0.16); beep(140,0.2,'square',0.10,0.05); }
+function playBuySound(){ beep(660,0.09,'triangle',0.14); beep(880,0.09,'triangle',0.12,0.07); }
+function playPrestigeSound(){ [440,554,659,880].forEach(function(f,i){ beep(f,0.25,'triangle',0.15,i*0.12); }); }
+function playRareSound(){ [660,880,1100,1320].forEach(function(f,i){ beep(f,0.18,'triangle',0.18,i*0.09); }); }
+function vibrate(pattern){ if(navigator.vibrate){ try{ navigator.vibrate(pattern); }catch(e){} } }
+
+/* =========================================================
+   CANVAS / RENDER
+========================================================= */
+var canvas = document.getElementById('gameCanvas');
+var ctx = canvas.getContext('2d');
+var W = canvas.width, H = canvas.height;
+var BLOCK_CX = W/2, BLOCK_CY = 300;
+
+var particles = [];
+var floatingTexts = [];
+var shakeMag = 0;
+var punch = 0;
+
+function spawnParticles(x,y,color,count){
+  for(var i=0;i<count;i++){
+    var angle = Math.random()*Math.PI*2; var speed = 40+Math.random()*90;
+    particles.push({x:x,y:y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-60,life:0.5+Math.random()*0.5,size:2+Math.floor(Math.random()*3),color:color});
+  }
+}
+function spawnFloatingText(x,y,text,color,big){ floatingTexts.push({x:x,y:y,text:text,color:color,alpha:1,vy:-38,big:!!big}); }
+function format(n){
+  n = Math.floor(n);
+  if(n < 1000) return String(n);
+  var units = ['K','M','B','T','Qa','Qi','Sx','Sp']; var u=-1; var v=n;
+  while(v >= 1000 && u < units.length-1){ v/=1000; u++; }
+  var dec = v<10?2:(v<100?1:0);
+  return v.toFixed(dec)+units[u];
+}
+function pointInBlock(x,y){ var dx=x-BLOCK_CX, dy=y-BLOCK_CY; return (dx*dx+dy*dy) <= (85*85); }
+function currentTier(){ return TIERS[state.tierIndex]; }
+
+function showToast(text, color){
+  var t = document.createElement('div');
+  t.className = 'toast'; t.style.borderColor = color||'#fff'; t.style.color = color||'#fff';
+  t.textContent = text;
+  document.getElementById('gameContainer').appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2500);
+}
+
+function rollForCollectible(){
+  var luckBonus = 1 + state.upgrades.minerLuck*0.15;
+  var roll = Math.random();
+  for(var i=RARITIES.length-1;i>=0;i--){
+    var r = RARITIES[i];
+    var chance = r.chance * luckBonus;
+    if(roll < chance){
+      var pool = COLLECTIBLES.filter(function(c){ return c.rarity===r.key; });
+      var item = pool[Math.floor(Math.random()*pool.length)];
+      var isNew = !state.collection[item.id];
+      state.collection[item.id] = Date.now();
+      ensureAudio(); playRareSound(); vibrate([20,30,20,30,20]);
+      showToast((isNew?'NOVO! ':'')+item.name+' — '+r.name, r.color);
+      spawnFloatingText(BLOCK_CX, BLOCK_CY-90, r.name+'!', r.color, true);
+      save();
+      return;
+    }
+  }
+}
+
+function breakBlock(){
+  var tier = currentTier();
+  var value = Math.floor(tier.baseValue * state.fortuneMult * rankMult());
+  if(Math.random() < state.upgrades.greed*0.03){
+    value *= 2; spawnFloatingText(BLOCK_CX, BLOCK_CY-55, 'GANÂNCIA! x2', '#ffd700', true);
+  }
+  state.resources += value; state.totalEarned += value; state.blocksBrokenInTier++;
+  spawnParticles(BLOCK_CX, BLOCK_CY, tier.speckle||tier.light, 26);
+  spawnFloatingText(BLOCK_CX, BLOCK_CY-40, '+'+format(value), '#ffe066', true);
+  shakeMag = Math.max(shakeMag, 7);
+  playBreakSound(); vibrate([30,20,30]);
+  rollForCollectible();
+
+  if(state.blocksBrokenInTier >= tier.goal && state.tierIndex < TIERS.length-1){
+    state.tierIndex++; state.blocksBrokenInTier = 0;
+    spawnFloatingText(BLOCK_CX, BLOCK_CY-70, 'NOVO BLOCO!', '#7ad1ff', true);
+  }
+  var newTier = currentTier();
+  state.blockMaxHp = newTier.baseHp; state.blockHp = newTier.baseHp;
+  save();
+}
+
+function handleTap(x,y){
+  if(!pointInBlock(x,y)) return;
+  ensureAudio();
+  var now = performance.now();
+  if(now - state.lastClickTime < 600){ state.comboCount = Math.min(20, state.comboCount+1); }
+  else { state.comboCount = 0; }
+  state.lastClickTime = now;
+
+  var comboMult = 1 + (state.comboCount/20)*0.5;
+  comboMult += (state.upgrades.berserker*0.03) * (state.comboCount/20);
+
+  var isCrit = Math.random() < state.critChance;
+  var dmg = state.clickPower * comboMult * (isCrit ? state.critMult : 1);
+  dmg = Math.max(1, Math.round(dmg));
+  state.blockHp -= dmg;
+
+  var tier = currentTier();
+  spawnParticles(x, y, tier.speckle||tier.light, isCrit?12:6);
+  spawnFloatingText(x, y-10, (isCrit?'CRÍTICO! ':'')+'+'+format(dmg), isCrit?'#ff5555':'#ffffff', isCrit);
+  playClickSound(isCrit); vibrate(isCrit?[15,10,15]:10);
+  shakeMag = Math.max(shakeMag, isCrit?5:1.5); punch = 1;
+
+  if(Math.random() < state.upgrades.fragment*0.04){
+    state.blockHp -= dmg;
+    spawnFloatingText(x, y-26, 'GOLPE DUPLO!', '#00e5ff', false);
+  }
+  if(Math.random() < state.upgrades.midnight*0.005){
+    state.blockHp = 0;
+    spawnFloatingText(BLOCK_CX, BLOCK_CY-20, 'TOQUE DA MEIA-NOITE!', '#673ab7', true);
+  }
+  if(state.blockHp <= 0){ breakBlock(); }
+}
+
+canvas.addEventListener('pointerdown', function(e){
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = W/rect.width, scaleY = H/rect.height;
+  handleTap((e.clientX-rect.left)*scaleX, (e.clientY-rect.top)*scaleY);
+}, {passive:true});
+
+/* =========================================================
+   LOOP PRINCIPAL
+========================================================= */
+var lastTime = performance.now();
+var hudTimer = 0;
+
+function update(dt){
+  if(state.idlePerSec > 0){
+    var gain = state.idlePerSec * rankMult() * state.fortuneMult * dt;
+    state.resources += gain; state.totalEarned += gain;
+  }
+  if(performance.now() - state.lastClickTime > 600 && state.comboCount > 0){
+    state.comboCount = Math.max(0, state.comboCount - dt*8);
+  }
+  shakeMag *= Math.pow(0.001, dt); if(shakeMag < 0.05) shakeMag = 0;
+  punch *= Math.pow(0.0005, dt); if(punch < 0.02) punch = 0;
+
+  for(var i=particles.length-1;i>=0;i--){
+    var p = particles[i];
+    p.vy += 260*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt;
+    if(p.life <= 0) particles.splice(i,1);
+  }
+  for(var j=floatingTexts.length-1;j>=0;j--){
+    var f = floatingTexts[j];
+    f.y += f.vy*dt; f.alpha -= dt*1.1;
+    if(f.alpha <= 0) floatingTexts.splice(j,1);
+  }
+  hudTimer += dt;
+  if(hudTimer > 0.1){ hudTimer = 0; updateHUD(); }
+}
+
+function drawBackground(now){
+  var grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#2b241c'); grad.addColorStop(1,'#100d09');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha = 0.35;
+  for(var i=0;i<18;i++){
+    var bx = (i*53) % W; var by = 40 + ((i*97) % (H-120));
+    ctx.fillStyle = (i%2===0)? '#3c332a' : '#221c15';
+    ctx.fillRect(bx, by, 34, 34);
+  }
+  ctx.globalAlpha = 1;
+  var glow1 = ctx.createRadialGradient(50,150,5,50,150,140);
+  glow1.addColorStop(0,'rgba(255,200,80,0.25)'); glow1.addColorStop(1,'rgba(255,200,80,0)');
+  ctx.fillStyle = glow1; ctx.fillRect(0,0,W,H);
+  var glow2 = ctx.createRadialGradient(W-50,450,5,W-50,450,140);
+  glow2.addColorStop(0,'rgba(255,200,80,0.2)'); glow2.addColorStop(1,'rgba(255,200,80,0)');
+  ctx.fillStyle = glow2; ctx.fillRect(0,0,W,H);
+}
+
+function drawMiners(now){
+  var order = ['minerAldeao','minerFerreiro','minerGolem','minerGolemD','minerEsqueleto','minerPiglin','minerDragao','minerTita'];
+  var colors = {minerAldeao:'#c9986b',minerFerreiro:'#e0965a',minerGolem:'#d8d8d8',minerGolemD:'#4be3d8',minerEsqueleto:'#e5e5c8',minerPiglin:'#ff9fc2',minerDragao:'#8a2be2',minerTita:'#ff2ec4'};
+  var slot = 0;
+  for(var k=0;k<order.length;k++){
+    var lvl = state.upgrades[order[k]];
+    if(lvl <= 0) continue;
+    if(slot >= 6) break;
+    var side = slot%2===0 ? 30 : W-30;
+    var baseY = 470 + Math.floor(slot/2)*46;
+    var bob = Math.sin(now/300 + slot)*4;
+    ctx.fillStyle = colors[order[k]];
+    ctx.fillRect(side-9, baseY+bob-9, 18, 18);
+    ctx.fillStyle = '#0d0b08';
+    ctx.fillRect(side-6, baseY+bob-5, 2, 2); ctx.fillRect(side+2, baseY+bob-5, 2, 2);
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+    ctx.strokeRect(side-9, baseY+bob-9, 18, 18);
+    ctx.fillStyle = '#fff'; ctx.font = "6px 'Press Start 2P'"; ctx.textAlign = 'center';
+    ctx.fillText('x'+lvl, side, baseY+bob+18);
+    slot++;
+  }
+}
+
+function drawBlock(now){
+  var tier = currentTier();
+  var tex = getTexture(tier);
+  var bounce = Math.sin(now/500)*3;
+  var scale = 1 + punch*0.12;
+  var size = 148*scale;
+  var x = BLOCK_CX - size/2;
+  var y = BLOCK_CY + bounce - size/2;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(tex, 0,0, TEX_SIZE, TEX_SIZE, x, y, size, size);
+
+  if(tier.special === 'eternal'){
+    var hue = (now/20) % 360;
+    ctx.globalAlpha = 0.25; ctx.fillStyle = 'hsl('+hue+',80%,60%)'; ctx.fillRect(x,y,size,size); ctx.globalAlpha = 1;
+  } else if(tier.special === 'glow'){
+    var pulse = 0.15 + Math.sin(now/300)*0.08;
+    ctx.globalAlpha = pulse; ctx.fillStyle = tier.speckle; ctx.fillRect(x,y,size,size); ctx.globalAlpha = 1;
+  }
+
+  var dmgPct = 1 - (state.blockHp/state.blockMaxHp);
+  var stage = Math.min(3, Math.floor(dmgPct*4));
+  if(dmgPct > 0.05){ ctx.drawImage(crackCache[stage], 0,0,TEX_SIZE,TEX_SIZE, x, y, size, size); }
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3; ctx.strokeRect(x,y,size,size);
+  ctx.restore();
+
+  var barW = 160, barH = 10;
+  var barX = BLOCK_CX-barW/2, barY = BLOCK_CY+size/2+bounce+16;
+  ctx.fillStyle = '#000'; ctx.fillRect(barX-2, barY-2, barW+4, barH+4);
+  ctx.fillStyle = '#3a3a3a'; ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#5ec14a'; ctx.fillRect(barX, barY, barW*Math.max(0,state.blockHp/state.blockMaxHp), barH);
+}
+
+function drawParticles(){
+  for(var i=0;i<particles.length;i++){
+    var p = particles[i];
+    ctx.globalAlpha = Math.max(0,p.life); ctx.fillStyle = p.color;
+    ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+function drawFloatingTexts(){
+  ctx.textAlign = 'center';
+  for(var i=0;i<floatingTexts.length;i++){
+    var f = floatingTexts[i];
+    ctx.globalAlpha = Math.max(0,f.alpha);
+    ctx.font = (f.big? "11px" : "8px")+" 'Press Start 2P'";
+    ctx.fillStyle = '#000'; ctx.fillText(f.text, f.x+1, f.y+1);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+}
+function draw(now){
+  ctx.clearRect(0,0,W,H);
+  var sx = shakeMag>0 ? (Math.random()-0.5)*shakeMag : 0;
+  var sy = shakeMag>0 ? (Math.random()-0.5)*shakeMag : 0;
+  ctx.save(); ctx.translate(sx, sy);
+  drawBackground(now); drawMiners(now); drawBlock(now); drawParticles(); drawFloatingTexts();
+  ctx.restore();
+}
+function loop(now){
+  var dt = Math.min(0.05, (now-lastTime)/1000);
+  lastTime = now;
+  update(dt); draw(now);
+  requestAnimationFrame(loop);
+}
+
+/* =========================================================
+   HUD
+========================================================= */
+var resourceDisplay = document.getElementById('resourceDisplay');
+var idleDisplay = document.getElementById('idleDisplay');
+var tierDisplay = document.getElementById('tierDisplay');
+var comboBar = document.getElementById('comboBar');
+var rankName = document.getElementById('rankName');
+var lastRankStep = 0;
+
+function updateHUD(){
+  resourceDisplay.textContent = format(state.resources);
+  var idleTotal = state.idlePerSec * rankMult() * state.fortuneMult;
+  idleDisplay.textContent = '+'+format(idleTotal)+'/seg';
+  var tier = currentTier();
+  var goalTxt = isFinite(tier.goal) ? (state.blocksBrokenInTier+'/'+tier.goal) : '∞';
+  tierDisplay.textContent = tier.name+' ('+goalTxt+')';
+  comboBar.style.width = ((state.comboCount/20)*100)+'%';
+
+  var step = getRankStep(state.diamonds);
+  var info = getRankInfo(step);
+  rankName.textContent = info.name;
+  rankName.style.background = info.color;
+  rankName.style.color = (info.tierIdx<=1)? '#fff':'#1a1a1a';
+
+  if(step > lastRankStep){ showRankUp(getRankInfo(step)); }
+  lastRankStep = step;
+}
+function showRankUp(info){
+  var el = document.createElement('div');
+  el.className = 'rankup-flash';
+  el.innerHTML = '<div class="big">PATENTE PROMOVIDA!</div><div class="small" style="color:'+info.color+'">'+info.name+'</div>';
+  document.getElementById('gameContainer').appendChild(el);
+  ensureAudio(); playPrestigeSound();
+  setTimeout(function(){ el.remove(); }, 2200);
+}
+
+/* =========================================================
+   LOJA
+========================================================= */
+var shopList = document.getElementById('shopList');
+var activeTab = 'pickaxe';
+function upgradeCost(u){ return Math.ceil(u.baseCost * Math.pow(u.costMult, state.upgrades[u.id])); }
+
+function renderShop(){
+  shopList.innerHTML = '';
+
+  if(activeTab === 'pickaxe'){
+    PICKAXES.forEach(function(pk, idx){
+      var card = document.createElement('div'); card.className = 'upgrade-card';
+      var icon = document.createElement('div'); icon.className = 'upgrade-icon';
+      icon.appendChild(iconEl('pickaxe', pk.color, 28));
+      card.appendChild(icon);
+
+      var info = document.createElement('div'); info.className = 'upgrade-info';
+      info.innerHTML = '<div class="u-name" style="color:'+pk.color+'">'+pk.name+'</div>'+
+                        '<div class="u-desc">Poder de clique: '+pk.power+'</div>';
+      card.appendChild(info);
+
+      var btn = document.createElement('button'); btn.className = 'buy-btn';
+      if(idx < state.pickaxeIndex){ btn.textContent = 'OBTIDA'; btn.disabled = true; }
+      else if(idx === state.pickaxeIndex){ btn.textContent = 'EQUIPADA'; btn.disabled = true; btn.classList.add('equipped'); }
+      else if(idx === state.pickaxeIndex+1){
+        btn.textContent = format(pk.cost);
+        btn.disabled = state.resources < pk.cost;
+        btn.addEventListener('click', function(){ buyPickaxe(idx); });
+      } else {
+        btn.textContent = 'BLOQUEADA'; btn.disabled = true; btn.classList.add('locked');
+      }
+      card.appendChild(btn);
+      shopList.appendChild(card);
+    });
+    return;
+  }
+
+  var list = UPGRADES.filter(function(u){ return u.category===activeTab; });
+  list.forEach(function(u){
+    var cost = upgradeCost(u);
+    var card = document.createElement('div'); card.className = 'upgrade-card';
+    var icon = document.createElement('div'); icon.className = 'upgrade-icon';
+    icon.appendChild(iconEl(u.iconKind, u.color, 28));
+    card.appendChild(icon);
+
+    var info = document.createElement('div'); info.className = 'upgrade-info';
+    info.innerHTML = '<div class="u-name" style="color:'+u.color+'">'+u.name+'</div>'+
+                      '<div class="u-desc">'+u.desc+'</div>'+
+                      '<div class="u-level">Nível '+state.upgrades[u.id]+'</div>';
+    card.appendChild(info);
+
+    var btn = document.createElement('button'); btn.className = 'buy-btn';
+    btn.textContent = format(cost);
+    btn.disabled = state.resources < cost;
+    btn.addEventListener('click', function(){ buyUpgrade(u.id); });
+    card.appendChild(btn);
+    shopList.appendChild(card);
+  });
+}
+
+function buyPickaxe(idx){
+  var pk = PICKAXES[idx];
+  if(idx !== state.pickaxeIndex+1) return;
+  if(state.resources < pk.cost) return;
+  state.resources -= pk.cost;
+  state.pickaxeIndex = idx;
+  recomputeStats();
+  ensureAudio(); playBuySound();
+  showToast('Picareta equipada: '+pk.name, pk.color);
+  save(); renderShop(); updateHUD();
+}
+function buyUpgrade(id){
+  var u = null;
+  for(var i=0;i<UPGRADES.length;i++){ if(UPGRADES[i].id===id){ u=UPGRADES[i]; break; } }
+  if(!u) return;
+  var cost = upgradeCost(u);
+  if(state.resources < cost) return;
+  state.resources -= cost;
+  state.upgrades[id]++;
+  recomputeStats();
+  ensureAudio(); playBuySound();
+  save(); renderShop(); updateHUD();
+}
+
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    activeTab = btn.getAttribute('data-tab');
+    renderShop();
+  });
+});
+
+/* =========================================================
+   PATENTE (prestígio)
+========================================================= */
+var prestigeContent = document.getElementById('prestigeContent');
+function renderPrestige(){
+  var gain = calcDiamondGain(state.totalEarned);
+  var step = getRankStep(state.diamonds);
+  var info = getRankInfo(step);
+  var nextThreshold = RANK_THRESHOLDS[Math.min(step+1, RANK_THRESHOLDS.length-1)];
+  var prevThreshold = RANK_THRESHOLDS[step];
+  var progress = step >= RANK_STEPS_TOTAL-1 ? 1 : (state.diamonds-prevThreshold)/(nextThreshold-prevThreshold);
+
+  var html = '';
+  html += '<p>Reconstruir o mundo reseta seus recursos, picareta e upgrades — mas concede Diamantes permanentes que sobem sua patente para sempre.</p>';
+  html += '<p>Patente atual: <b style="color:'+info.color+'">'+info.name+'</b> &nbsp; (bônus +'+Math.round((rankMult()-1)*100)+'%)</p>';
+  html += '<div id="rankProgressWrap"><div id="rankProgressBar" style="width:'+Math.round(progress*100)+'%"></div></div>';
+  html += '<p>Diamantes: <b>'+state.diamonds+'</b></p>';
+  html += '<p>Total minerado nesta jornada: <b>'+format(state.totalEarned)+'</b></p>';
+  html += '<p>Diamantes a ganhar agora: <b style="color:#7a3ba0">'+gain+'</b></p>';
+  prestigeContent.innerHTML = html;
+
+  var btn = document.createElement('button');
+  btn.className = 'mc-btn'; btn.id = 'prestigeConfirm';
+  btn.textContent = gain > 0 ? 'RECONSTRUIR O MUNDO (+'+gain+' DIAMANTES)' : 'MINERE MAIS PARA DESBLOQUEAR';
+  btn.disabled = gain <= 0; if(gain<=0){ btn.style.opacity=0.6; }
+  btn.addEventListener('click', doPrestige);
+  prestigeContent.appendChild(btn);
+}
+function doPrestige(){
+  var gain = calcDiamondGain(state.totalEarned);
+  if(gain <= 0) return;
+  state.diamonds += gain;
+  state.resources = 0; state.totalEarned = 0; state.pickaxeIndex = 0;
+  state.upgrades = {
+    fortune:0, luck:0, precision:0, berserker:0, midnight:0, greed:0, fragment:0, minerLuck:0,
+    minerAldeao:0, minerFerreiro:0, minerGolem:0, minerGolemD:0, minerEsqueleto:0, minerPiglin:0, minerDragao:0, minerTita:0
+  };
+  state.tierIndex = 0; state.blocksBrokenInTier = 0;
+  recomputeStats();
+  state.blockMaxHp = TIERS[0].baseHp; state.blockHp = TIERS[0].baseHp;
+  ensureAudio(); playPrestigeSound();
+  save(); renderShop(); renderPrestige(); updateHUD();
+  closePanel('prestigeOverlay');
+}
+
+/* =========================================================
+   COLEÇÃO
+========================================================= */
+var collectionGrid = document.getElementById('collectionGrid');
+var collectionHeader = document.getElementById('collectionHeader');
+function renderCollection(){
+  var found = 0;
+  for(var k in state.collection){ if(state.collection[k]) found++; }
+  collectionHeader.textContent = 'MURAL DE RARIDADES ('+found+'/'+COLLECTIBLES.length+')';
+  collectionGrid.innerHTML = '';
+  COLLECTIBLES.forEach(function(item){
+    var r = rarityInfo(item.rarity);
+    var has = !!state.collection[item.id];
+    var div = document.createElement('div');
+    div.className = 'col-item'+(has?'':' locked');
+    div.style.borderColor = r.color;
+    var iconWrap = document.createElement('div'); iconWrap.className = 'ci-icon';
+    iconWrap.appendChild(iconEl(has ? ('col_'+item.rarity) : 'locked', has ? r.color : '#555', 32));
+    div.appendChild(iconWrap);
+    var nameEl = document.createElement('div'); nameEl.className = 'ci-name'; nameEl.textContent = has ? item.name : '???';
+    div.appendChild(nameEl);
+    var rEl = document.createElement('div'); rEl.className = 'ci-rarity'; rEl.style.color = r.color; rEl.textContent = r.name;
+    div.appendChild(rEl);
+    collectionGrid.appendChild(div);
+  });
+}
+
+/* =========================================================
+   POPUP OFFLINE
+========================================================= */
+var offlineContent = document.getElementById('offlineContent');
+function showOfflinePopup(gained, elapsedSec){
+  var hours = (elapsedSec/3600);
+  var hTxt = hours < 1 ? Math.floor(elapsedSec/60)+' minutos' : hours.toFixed(1)+' horas';
+  offlineContent.innerHTML = '<p>Enquanto você estava fora, seus mineradores trabalharam por <b>'+hTxt+'</b> e produziram:</p>'+
+    '<p style="font-size:14px; color:#1a5c1a; text-align:center;">+'+format(gained)+'</p>';
+  openPanel('offlineOverlay');
+}
+
+/* =========================================================
+   CONTROLE DE PAINÉIS
+========================================================= */
+function openPanel(id){ document.getElementById(id).classList.remove('hidden'); }
+function closePanel(id){ document.getElementById(id).classList.add('hidden'); }
+document.getElementById('btnShop').addEventListener('click', function(){ renderShop(); openPanel('shopOverlay'); });
+document.getElementById('btnPrestige').addEventListener('click', function(){ renderPrestige(); openPanel('prestigeOverlay'); });
+document.getElementById('btnCollection').addEventListener('click', function(){ renderCollection(); openPanel('collectionOverlay'); });
+document.querySelectorAll('[data-close]').forEach(function(el){
+  el.addEventListener('click', function(){ closePanel(el.getAttribute('data-close')); });
+});
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+load();
+recomputeStats();
+lastRankStep = getRankStep(state.diamonds);
+updateHUD();
+setInterval(save, 10000);
+window.addEventListener('beforeunload', save);
+document.addEventListener('visibilitychange', function(){ if(document.hidden) save(); });
+requestAnimationFrame(function(t){ lastTime = t; requestAnimationFrame(loop); });
+
+})();
+</script>
+</body>
+</html>
