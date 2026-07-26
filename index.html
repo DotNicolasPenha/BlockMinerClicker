@@ -48,13 +48,7 @@
     border-top:3px solid var(--panel-shadow); border-left:3px solid var(--panel-shadow);
     border-bottom:3px solid var(--panel-light); border-right:3px solid var(--panel-light);
   }
-  .panel-overlay{ position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; z-index:20; }
-  .panel-overlay.hidden{display:none;}
-  .sheet{
-    width:100%; max-height:82%; background:var(--panel);
-    border-top:4px solid var(--panel-light); border-left:4px solid var(--panel-light); border-right:4px solid var(--panel-shadow);
-    display:flex; flex-direction:column; color:var(--ink);
-  }
+
   .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; }
   .sheet-header .close-x{ background:var(--danger); color:#fff; border:2px solid #000; width:22px; height:22px; text-align:center; line-height:20px; cursor:pointer; font-size:10px; }
   .tabs{display:flex; gap:3px; padding:8px 8px 0;}
@@ -113,6 +107,127 @@
   .rankup-flash .big{ font-size:14px; color:#f6d32d; text-shadow:2px 2px 0 #000; margin-bottom:10px;}
   .rankup-flash .small{ font-size:9px; color:#fff; text-shadow:2px 2px 0 #000; }
   @keyframes rankFade{ 0%{opacity:0;} 10%{opacity:1;} 80%{opacity:1;} 100%{opacity:0;} }
+
+  /* =========================================================
+     RESPONSIVE LAYOUT — SIDEBAR (mobile-first)
+  ========================================================= */
+  #sidebar{
+    position:fixed; inset:0; z-index:20; pointer-events:none;
+    display:flex; flex-direction:column;
+  }
+  .sidebar-tabs{ display:none; }
+  .sidebar-body{
+    flex:1; display:flex; flex-direction:column; position:relative;
+  }
+  .panel-overlay{ position:absolute; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:flex-end; z-index:20; pointer-events:auto; }
+  .panel-overlay.hidden{display:none;}
+  .sheet{
+    width:100%; max-height:95%; background:var(--panel);
+    border-top:4px solid var(--panel-light); border-left:4px solid var(--panel-light); border-right:4px solid var(--panel-shadow);
+    display:flex; flex-direction:column; color:var(--ink); overflow:hidden;
+  }
+
+  /* Tablet: canvas cresce, overlays mais largos */
+  @media(min-width:768px){
+    #gameContainer{ max-width:560px; }
+    .sheet{ max-height:90%; }
+  }
+
+  /* Desktop ≥1024px: sidebar fixa ao lado */
+  @media(min-width:1024px){
+    html,body{ overflow:hidden; }
+    #app{
+      flex-direction:row; align-items:stretch; justify-content:flex-start;
+      height:100vh; width:100vw; gap:0;
+      background:
+        radial-gradient(ellipse at 25% 50%, #3c332a 0%, #221c15 45%, #0d0b08 100%);
+    }
+    #gameContainer{
+      width:auto; height:100vh; max-width:none; max-height:none;
+      aspect-ratio:9/16; border:none; flex-shrink:0; background:transparent;
+    }
+    #gameCanvas{ width:100%; height:100%; }
+    #bottomNav{ display:none; }
+    #hud{ pointer-events:none; }
+
+    #sidebar{
+      position:static; inset:auto; z-index:auto; pointer-events:auto;
+      flex:1; max-width:900px;
+      background:var(--panel); border-left:4px solid #000;
+    }
+    .sidebar-tabs{
+      display:flex; gap:2px; padding:12px 12px 0; flex-shrink:0;
+    }
+    .st-tab{
+      flex:1; font-family:'Press Start 2P',monospace; font-size:9px;
+      padding:12px 6px; text-align:center; cursor:pointer;
+      background:var(--panel-dark); color:#ccc;
+      border:2px solid var(--panel-shadow);
+      transition:background 0.15s;
+    }
+    .st-tab.active{ background:var(--gold); color:#3a2a00; }
+    .st-tab:hover{ filter:brightness(1.15); }
+    .sidebar-body{
+      flex:1; display:flex; flex-direction:column; overflow:hidden;
+    }
+    .sidebar-body .panel-overlay{
+      position:static; inset:auto; background:none; align-items:stretch;
+      flex:1; display:flex;
+    }
+    .sidebar-body .panel-overlay.hidden{display:none;}
+    .sheet{
+      width:100%; max-height:none; height:100%;
+      border:none; border-top:3px solid var(--panel-light);
+    }
+    .sheet-header{ padding:14px 16px; font-size:13px; flex-shrink:0; }
+    .sheet-header .close-x{
+      width:28px; height:28px; line-height:26px; font-size:12px;
+    }
+    .tabs{ padding:8px 12px 0; gap:4px; }
+    .tab-btn{ font-size:8px; padding:10px 4px; }
+
+    #shopList, #prestigeContent, #offlineContent, #collectionGrid{ padding:14px; font-size:9px; }
+    #collectionGrid{ grid-template-columns:repeat(3,1fr); gap:10px; }
+
+    .upgrade-card{ padding:9px; margin-bottom:8px; gap:10px; }
+    .upgrade-icon{ width:34px; height:34px; }
+    .upgrade-info .u-name{ font-size:9px; }
+    .upgrade-info .u-desc{ font-size:7.5px; }
+    .upgrade-info .u-level{ font-size:7.5px; }
+    .buy-btn{ font-size:7.5px; padding:9px 6px; }
+    .mc-btn{ font-size:9px; padding:12px 4px; }
+
+    #resourceDisplay{ font-size:14px; }
+    .pixel-panel{ font-size:10px; }
+
+    #offlineOverlay.panel-overlay{
+      align-items:center; z-index:30;
+    }
+    #offlineOverlay .sheet{
+      max-height:45%; border:4px solid var(--panel-shadow);
+      border-top:4px solid var(--panel-light); border-left:4px solid var(--panel-light);
+    }
+    #offlineContent p{ font-size:9px; }
+
+    #rankProgressWrap{ height:14px; }
+    #prestigeContent p{ font-size:9px; line-height:2; }
+    .col-item .ci-name{ font-size:6.5px; }
+    .col-item .ci-rarity{ font-size:6px; }
+
+    /* scrollbar estilizada */
+    #shopList::-webkit-scrollbar, #prestigeContent::-webkit-scrollbar,
+    #offlineContent::-webkit-scrollbar, #collectionGrid::-webkit-scrollbar{
+      width:8px;
+    }
+    #shopList::-webkit-scrollbar-track, #prestigeContent::-webkit-scrollbar-track,
+    #offlineContent::-webkit-scrollbar-track, #collectionGrid::-webkit-scrollbar-track{
+      background:var(--panel-dark);
+    }
+    #shopList::-webkit-scrollbar-thumb, #prestigeContent::-webkit-scrollbar-thumb,
+    #offlineContent::-webkit-scrollbar-thumb, #collectionGrid::-webkit-scrollbar-thumb{
+      background:var(--panel-shadow); border:1px solid var(--panel-light);
+    }
+  }
 </style>
 </head>
 <body>
@@ -138,39 +253,49 @@
       <button class="mc-btn" id="btnPrestige">PATENTE</button>
       <button class="mc-btn" id="btnCollection">COLEÇÃO</button>
     </div>
+  </div>
 
-    <div class="panel-overlay hidden" id="shopOverlay">
-      <div class="sheet" style="height:74%">
-        <div class="sheet-header"><span>LOJA DE UPGRADES</span><span class="close-x" data-close="shopOverlay">X</span></div>
-        <div class="tabs">
-          <div class="tab-btn active" data-tab="pickaxe">PICARETAS</div>
-          <div class="tab-btn" data-tab="enchant">ENCANTOS</div>
-          <div class="tab-btn" data-tab="miner">MINERADORES</div>
+  <div id="sidebar">
+    <div class="sidebar-tabs">
+      <div class="st-tab active" data-sidebar="shopOverlay">LOJA</div>
+      <div class="st-tab" data-sidebar="prestigeOverlay">PATENTE</div>
+      <div class="st-tab" data-sidebar="collectionOverlay">COLEÇÃO</div>
+    </div>
+    <div class="sidebar-body">
+      <div class="panel-overlay hidden" id="shopOverlay">
+        <div class="sheet">
+          <div class="sheet-header"><span>LOJA DE UPGRADES</span><span class="close-x" data-close="shopOverlay">✕</span></div>
+          <div class="tabs">
+            <div class="tab-btn active" data-tab="pickaxe">PICARETAS</div>
+            <div class="tab-btn" data-tab="enchant">ENCANTOS</div>
+            <div class="tab-btn" data-tab="miner">MINERADORES</div>
+          </div>
+          <div id="shopList"></div>
         </div>
-        <div id="shopList"></div>
       </div>
-    </div>
 
-    <div class="panel-overlay hidden" id="prestigeOverlay">
-      <div class="sheet" style="height:62%">
-        <div class="sheet-header"><span>PATENTE DE MINERADOR</span><span class="close-x" data-close="prestigeOverlay">X</span></div>
-        <div id="prestigeContent"></div>
+      <div class="panel-overlay hidden" id="prestigeOverlay">
+        <div class="sheet">
+          <div class="sheet-header"><span>PATENTE DE MINERADOR</span><span class="close-x" data-close="prestigeOverlay">✕</span></div>
+          <div id="prestigeContent"></div>
+        </div>
       </div>
-    </div>
 
-    <div class="panel-overlay hidden" id="collectionOverlay">
-      <div class="sheet" style="height:78%">
-        <div class="sheet-header"><span id="collectionHeader">MURAL DE RARIDADES</span><span class="close-x" data-close="collectionOverlay">X</span></div>
-        <div id="collectionGrid"></div>
+      <div class="panel-overlay hidden" id="collectionOverlay">
+        <div class="sheet">
+          <div class="sheet-header"><span id="collectionHeader">MURAL DE RARIDADES</span><span class="close-x" data-close="collectionOverlay">✕</span></div>
+          <div id="collectionGrid"></div>
+        </div>
       </div>
-    </div>
 
-    <div class="panel-overlay hidden" id="offlineOverlay">
-      <div class="sheet" style="height:40%">
-        <div class="sheet-header"><span>BEM-VINDO DE VOLTA</span><span class="close-x" data-close="offlineOverlay">X</span></div>
-        <div id="offlineContent"></div>
-      </div>
     </div>
+  </div>
+</div>
+
+<div class="panel-overlay hidden" id="offlineOverlay">
+  <div class="sheet" style="max-width:500px; margin:0 auto;">
+    <div class="sheet-header"><span>BEM-VINDO DE VOLTA</span><span class="close-x" data-close="offlineOverlay">✕</span></div>
+    <div id="offlineContent"></div>
   </div>
 </div>
 
@@ -1109,13 +1234,37 @@ function showOfflinePopup(gained, elapsedSec){
 /* =========================================================
    CONTROLE DE PAINÉIS
 ========================================================= */
-function openPanel(id){ document.getElementById(id).classList.remove('hidden'); }
-function closePanel(id){ document.getElementById(id).classList.add('hidden'); }
+function openPanel(id){
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('.st-tab').forEach(function(t){
+    t.classList.toggle('active', t.getAttribute('data-sidebar')===id);
+  });
+}
+function closePanel(id){
+  document.getElementById(id).classList.add('hidden');
+  document.querySelectorAll('.st-tab').forEach(function(t){
+    if(t.getAttribute('data-sidebar')===id) t.classList.remove('active');
+  });
+}
 document.getElementById('btnShop').addEventListener('click', function(){ renderShop(); openPanel('shopOverlay'); });
 document.getElementById('btnPrestige').addEventListener('click', function(){ renderPrestige(); openPanel('prestigeOverlay'); });
 document.getElementById('btnCollection').addEventListener('click', function(){ renderCollection(); openPanel('collectionOverlay'); });
 document.querySelectorAll('[data-close]').forEach(function(el){
   el.addEventListener('click', function(){ closePanel(el.getAttribute('data-close')); });
+});
+
+/* Sidebar tabs (desktop) */
+document.querySelectorAll('.st-tab').forEach(function(tab){
+  tab.addEventListener('click', function(){
+    var target = tab.getAttribute('data-sidebar');
+    document.querySelectorAll('.panel-overlay').forEach(function(p){ p.classList.add('hidden'); });
+    document.querySelectorAll('.st-tab').forEach(function(t){ t.classList.remove('active'); });
+    tab.classList.add('active');
+    if(target==='shopOverlay') renderShop();
+    else if(target==='prestigeOverlay') renderPrestige();
+    else if(target==='collectionOverlay') renderCollection();
+    openPanel(target);
+  });
 });
 
 /* =========================================================
@@ -1129,6 +1278,12 @@ setInterval(save, 10000);
 window.addEventListener('beforeunload', save);
 document.addEventListener('visibilitychange', function(){ if(document.hidden) save(); });
 requestAnimationFrame(function(t){ lastTime = t; requestAnimationFrame(loop); });
+
+/* Desktop: auto-abre loja na sidebar se nenhum painel estiver visível */
+if(window.innerWidth >= 1024 && document.getElementById('offlineOverlay').classList.contains('hidden')){
+  renderShop();
+  openPanel('shopOverlay');
+}
 
 })();
 </script>
