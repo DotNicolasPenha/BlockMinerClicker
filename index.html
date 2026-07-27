@@ -58,6 +58,13 @@
     display:none; align-items:center; justify-content:center; padding:0 3px;
   }
   .badge.show{ display:flex; }
+  #eventBanner{
+    position:absolute; top:132px; left:8px; right:8px; z-index:6;
+    padding:6px 8px; font-size:8px; text-align:center;
+    display:none; pointer-events:none;
+  }
+  #eventBanner .ev-name{ font-size:9px; font-weight:bold; }
+  #eventBanner .ev-timer{ font-size:11px; margin-top:2px; }
 
   .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; }
   .sheet-header .close-x{ background:var(--danger); color:#fff; border:2px solid #000; width:22px; height:22px; text-align:center; line-height:20px; cursor:pointer; font-size:10px; }
@@ -275,6 +282,7 @@
     </div>
 
     <div id="comboBarWrap"><div id="comboBar"></div></div>
+    <div id="eventBanner" class="pixel-panel"><div class="ev-name"></div><div class="ev-timer"></div></div>
 
     <div id="bottomNav">
       <button class="mc-btn" id="btnShop">LOJA<span class="badge" id="badgeShop"></span></button>
@@ -918,7 +926,7 @@ function rollForCollectible(){
   var roll = Math.random();
   for(var i=RARITIES.length-1;i>=0;i--){
     var r = RARITIES[i];
-    var chance = r.chance * luckBonus;
+    var chance = r.chance * luckBonus * eventCollectMult;
     if(roll < chance){
       var pool = COLLECTIBLES.filter(function(c){ return c.rarity===r.key; });
       var item = pool[Math.floor(Math.random()*pool.length)];
@@ -936,7 +944,7 @@ function rollForCollectible(){
 
 function breakBlock(){
   var tier = currentTier();
-  var value = Math.floor(tier.baseValue * state.fortuneMult * rankMult());
+  var value = Math.floor(tier.baseValue * state.fortuneMult * rankMult() * eventResourceMult);
   if(Math.random() < state.upgrades.greed*0.03){
     value *= 2; spawnFloatingText(BLOCK_CX, BLOCK_CY-55, 'GANÂNCIA! x2', '#ffd700', true);
   }
@@ -982,7 +990,8 @@ function handleTap(x,y){
 
   var isCrit = Math.random() < state.critChance;
   var dmg = state.clickPower * comboMult * (isCrit ? state.critMult : 1);
-  dmg = Math.max(1, Math.round(dmg));
+  dmg = Math.max(1, Math.round(dmg * eventClickMult));
+  if(eventHalfHp) dmg *= 2;
   state.blockHp -= dmg;
 
   state.stats.totalClicks++;
@@ -1018,6 +1027,61 @@ canvas.addEventListener('pointerdown', function(e){
   var scaleX = W/rect.width, scaleY = H/rect.height;
   handleTap((e.clientX-rect.left)*scaleX, (e.clientY-rect.top)*scaleY);
 }, {passive:true});
+
+/* =========================================================
+   EVENTOS ALEATÓRIOS
+========================================================= */
+var EVENTS = [
+  {id:'richOre',name:'⚡ Veio de Minério Raro!',desc:'Recursos em dobro!',color:'#ffd700',dur:12,
+   start:function(){ eventResourceMult=2; },
+   end:function(){ eventResourceMult=1; showToast('Evento encerrado: Veio de Minério','#aaa'); }},
+  {id:'energize',name:'🔥 Energizar!',desc:'Clique 3× mais forte!',color:'#ff5555',dur:10,
+   start:function(){ eventClickMult=3; },
+   end:function(){ eventClickMult=1; showToast('Evento encerrado: Energizar','#aaa'); }},
+  {id:'lucky',name:'🍀 Sorte do Mineiro!',desc:'Itens raros 5× mais fáceis!',color:'#9c27b0',dur:20,
+   start:function(){ eventCollectMult=5; },
+   end:function(){ eventCollectMult=1; showToast('Evento encerrado: Sorte do Mineiro','#aaa'); }},
+  {id:'frenzy',name:'⛏️ Frenesi do Picareta!',desc:'Auto-clique rápido!',color:'#00e5ff',dur:8,
+   start:function(){ eventFrenzy=1; },
+   end:function(){ eventFrenzy=0; showToast('Evento encerrado: Frenesi','#aaa'); }},
+  {id:'swift',name:'💨 Mineração Acelerada!',desc:'Blocos com metade da vida!',color:'#4caf50',dur:15,
+   start:function(){ eventHalfHp=1; },
+   end:function(){ eventHalfHp=0; showToast('Evento encerrado: Acelerada','#aaa'); }}
+];
+var activeEvent = null;
+var eventTimer = 0;
+var eventResourceMult = 1;
+var eventClickMult = 1;
+var eventCollectMult = 1;
+var eventFrenzy = 0;
+var eventHalfHp = 0;
+var frenzyAccum = 0;
+var eventBanner = document.getElementById('eventBanner');
+var eventBannerName = eventBanner.querySelector('.ev-name');
+var eventBannerTimer = eventBanner.querySelector('.ev-timer');
+
+function startRandomEvent(){
+  var e = EVENTS[Math.floor(Math.random()*EVENTS.length)];
+  activeEvent = { id:e.id, timer:e.dur };
+  e.start();
+  eventBannerName.textContent = e.name;
+  eventBanner.style.display = 'block';
+  eventBanner.style.background = e.color;
+  eventBanner.style.color = '#fff';
+  eventBanner.style.borderColor = '#000';
+  ensureAudio();
+  beep(660,0.1,'triangle',0.14); beep(880,0.1,'triangle',0.12,0.06); beep(1100,0.15,'triangle',0.10,0.12);
+  spawnFloatingText(BLOCK_CX, BLOCK_CY-90, e.name, e.color, true);
+  spawnParticles(BLOCK_CX, BLOCK_CY, e.color, 25);
+}
+function endEvent(){
+  if(!activeEvent) return;
+  for(var i=0;i<EVENTS.length;i++){
+    if(EVENTS[i].id===activeEvent.id){ EVENTS[i].end(); break; }
+  }
+  activeEvent = null;
+  eventBanner.style.display = 'none';
+}
 
 /* =========================================================
    LOOP PRINCIPAL
@@ -1110,6 +1174,28 @@ function update(dt){
     }
   }
 
+  if(!activeEvent){
+    eventTimer+=dt;
+    if(eventTimer>18+Math.random()*20){
+      eventTimer=0;
+      if(Math.random()<0.6) startRandomEvent();
+    }
+  } else {
+    activeEvent.timer-=dt;
+    if(eventFrenzy>0){
+      frenzyAccum+=dt;
+      if(frenzyAccum>0.1){
+        frenzyAccum=0;
+        var dmg=state.clickPower*(1+(state.comboCount/20)*0.5)*(1+state.upgrades.berserker*0.03*(state.comboCount/20));
+        state.blockHp-=Math.max(1,Math.round(dmg));
+        spawnParticles(BLOCK_CX+(Math.random()-0.5)*40,BLOCK_CY+(Math.random()-0.5)*40,'#00e5ff',1);
+        if(state.blockHp<=0) breakBlock();
+      }
+    }
+    eventBannerTimer.textContent=Math.ceil(activeEvent.timer)+'s';
+    if(activeEvent.timer<=0) endEvent();
+  }
+
   hudTimer += dt;
   if(hudTimer > 0.1){ hudTimer = 0; updateHUD(); }
 }
@@ -1196,6 +1282,13 @@ function drawBlock(now){
   if(comboFlashTimer>0){
     var cf=comboFlashTimer/0.35;
     ctx.globalAlpha=cf*0.4; ctx.fillStyle='#ffd700'; ctx.fillRect(x-6,y-6,size+12,size+12); ctx.globalAlpha=1;
+  }
+
+  if(activeEvent){
+    var evColor='#fff';
+    for(var ei=0;ei<EVENTS.length;ei++){ if(EVENTS[ei].id===activeEvent.id){ evColor=EVENTS[ei].color; break; } }
+    var ea=0.12+Math.sin(now/120)*0.08;
+    ctx.globalAlpha=ea; ctx.fillStyle=evColor; ctx.fillRect(x-5,y-5,size+10,size+10); ctx.globalAlpha=1;
   }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3; ctx.strokeRect(x,y,size,size);
