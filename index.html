@@ -92,6 +92,24 @@
   #rankProgressWrap{ background:#000; height:14px; border:2px solid #000; margin:6px 0 14px; }
   #rankProgressBar{ height:100%; width:0%; background:linear-gradient(90deg,#c9a227,#f6d32d); }
 
+  #achievementList, #statsContent{ padding:10px; overflow-y:auto; font-size:8px; }
+  .ach-card{
+    display:flex; align-items:center; gap:8px; background:#dcdcdc;
+    border-top:2px solid #fff; border-left:2px solid #fff; border-bottom:2px solid #6b6b6b; border-right:2px solid #6b6b6b;
+    padding:8px; margin-bottom:8px;
+  }
+  .ach-card.unlocked{ background:#e8f5e9; border-color:#a5d6a7 #4caf50 #4caf50 #a5d6a7; }
+  .ach-icon{ width:28px; height:28px; flex:none; border:2px solid #000; background:#1c1c1c; display:flex; align-items:center; justify-content:center; }
+  .ach-icon canvas{ width:24px; height:24px; image-rendering:pixelated; }
+  .ach-info{ flex:1; line-height:1.6; min-width:0; }
+  .ach-info .ach-name{ font-size:8px; color:#1a1a1a; }
+  .ach-info .ach-desc{ font-size:6.5px; color:#555; }
+  .ach-info .ach-reward{ font-size:6.5px; color:#7a3ba0; }
+  .ach-status{ font-size:6px; white-space:nowrap; padding:4px 5px; border:2px solid #000; flex-shrink:0; }
+  .ach-status.done{ background:#4caf50; color:#fff; }
+  .ach-status.locked{ background:#8a8a8a; color:#ccc; }
+  .stats-panel{ margin-bottom:10px; padding:8px; background:#2b2b2b; color:#eee; border:2px solid #555; font-size:6.5px; line-height:1.8; }
+  .stats-panel b{ color:#f6d32d; }
   #collectionGrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
   .col-item{
     aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -262,6 +280,7 @@
       <button class="mc-btn" id="btnShop">LOJA<span class="badge" id="badgeShop"></span></button>
       <button class="mc-btn" id="btnPrestige">PATENTE<span class="badge" id="badgePrestige"></span></button>
       <button class="mc-btn" id="btnCollection">COLEÇÃO<span class="badge" id="badgeCollection"></span></button>
+      <button class="mc-btn" id="btnAchievements">CONQUISTAS<span class="badge" id="badgeAchievements"></span></button>
     </div>
   </div>
 
@@ -270,6 +289,7 @@
       <div class="st-tab active" data-sidebar="shopOverlay">LOJA<span class="badge" id="badgeShopSt"></span></div>
       <div class="st-tab" data-sidebar="prestigeOverlay">PATENTE<span class="badge" id="badgePrestigeSt"></span></div>
       <div class="st-tab" data-sidebar="collectionOverlay">COLEÇÃO<span class="badge" id="badgeCollectionSt"></span></div>
+      <div class="st-tab" data-sidebar="achievementOverlay">CONQUISTAS<span class="badge" id="badgeAchievementsSt"></span></div>
     </div>
     <div class="sidebar-body">
       <div class="panel-overlay hidden" id="shopOverlay">
@@ -288,6 +308,18 @@
         <div class="sheet">
           <div class="sheet-header"><span>PATENTE DE MINERADOR</span><span class="close-x" data-close="prestigeOverlay">✕</span></div>
           <div id="prestigeContent"></div>
+        </div>
+      </div>
+
+      <div class="panel-overlay hidden" id="achievementOverlay">
+        <div class="sheet">
+          <div class="sheet-header"><span>CONQUISTAS</span><span class="close-x" data-close="achievementOverlay">✕</span></div>
+          <div style="padding:10px; display:flex; gap:4px;">
+            <div class="tab-btn active" data-achtab="list">LISTA</div>
+            <div class="tab-btn" data-achtab="stats">ESTATÍSTICAS</div>
+          </div>
+          <div id="achievementList"></div>
+          <div id="statsContent" style="display:none;"></div>
         </div>
       </div>
 
@@ -417,6 +449,11 @@ function makeIcon(kind, color){
       g.fillStyle = '#ffd700'; g.fillRect(5,5,6,6);
       g.fillStyle = '#0d0b08'; g.fillRect(6,6,4,4);
       break;
+    case 'star':
+      g.fillStyle = color;
+      g.fillRect(7,2,2,4); g.fillRect(5,5,6,2); g.fillRect(5,9,6,2); g.fillRect(7,10,2,4);
+      g.fillRect(2,7,4,2); g.fillRect(10,7,4,2);
+      break;
     default:
       g.fillStyle = color; g.fillRect(3,3,10,10);
   }
@@ -522,6 +559,37 @@ var UPGRADES = [
 var MINER_ORDER = ['minerAldeao','minerFerreiro','minerGolem','minerGolemD','minerEsqueleto','minerPiglin','minerDragao','minerTita'];
 var MINER_COLORS = {minerAldeao:'#c9986b',minerFerreiro:'#e0965a',minerGolem:'#d8d8d8',minerGolemD:'#4be3d8',minerEsqueleto:'#e5e5c8',minerPiglin:'#ff9fc2',minerDragao:'#8a2be2',minerTita:'#ff2ec4'};
 
+var ACH_CATEGORIES = { miner:'#5b8f3b', combat:'#ff1744', collection:'#ffd700', prestige:'#a259ff', mastery:'#2196f3' };
+
+var ACHIEVEMENTS = [
+  {id:'a1',name:'Primeiro Bloco',desc:'Quebre 1 bloco',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=1;},reward:'Dano +1%',onUnlock:function(){}},
+  {id:'a2',name:'Minerador Dedicado',desc:'Quebre 100 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=100;},reward:'Dano +3%',onUnlock:function(){}},
+  {id:'a3',name:'Minerador Experiente',desc:'Quebre 1.000 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=1000;},reward:'Dano +5%',onUnlock:function(){}},
+  {id:'a4',name:'Minerador Lendário',desc:'Quebre 10.000 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=10000;},reward:'Dano +8%',onUnlock:function(){}},
+  {id:'a5',name:'Mestre dos Blocos',desc:'Quebre 100.000 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=100000;},reward:'Dano +12%',onUnlock:function(){}},
+  {id:'b1',name:'Crítico!',desc:'Acerte 10 críticos',cat:'combat',req:function(s){return s.stats.totalCrits>=10;},reward:'Crítico +1%',onUnlock:function(){}},
+  {id:'b2',name:'Precisão',desc:'Acerte 100 críticos',cat:'combat',req:function(s){return s.stats.totalCrits>=100;},reward:'Crítico +2%',onUnlock:function(){}},
+  {id:'b3',name:'Mestre dos Críticos',desc:'Acerte 1.000 críticos',cat:'combat',req:function(s){return s.stats.totalCrits>=1000;},reward:'Crítico +3%',onUnlock:function(){}},
+  {id:'b4',name:'Combo 5',desc:'Atinga combo 5',cat:'combat',req:function(s){return s.stats.bestCombo>=5;},reward:'Dano +2%',onUnlock:function(){}},
+  {id:'b5',name:'Combo 10',desc:'Atinga combo 10',cat:'combat',req:function(s){return s.stats.bestCombo>=10;},reward:'Dano +4%',onUnlock:function(){}},
+  {id:'b6',name:'Combo 20',desc:'Atinga combo 20',cat:'combat',req:function(s){return s.stats.bestCombo>=20;},reward:'Dano +8%',onUnlock:function(){}},
+  {id:'c1',name:'Colecionador Iniciante',desc:'Encontre 1 item raro',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=1;},reward:'Sorte +5%',onUnlock:function(){}},
+  {id:'c2',name:'Colecionador',desc:'Encontre 5 itens raros',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=5;},reward:'Sorte +10%',onUnlock:function(){}},
+  {id:'c3',name:'Colecionador Ávido',desc:'Encontre 10 itens raros',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=10;},reward:'Sorte +15%',onUnlock:function(){}},
+  {id:'c4',name:'Colecionador Completo',desc:'Encontre 20 itens raros',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=20;},reward:'Sorte +25%',onUnlock:function(){}},
+  {id:'d1',name:'Renascido',desc:'Prestigie 1 vez',cat:'prestige',req:function(s){return s.stats.prestigeCount>=1;},reward:'Diamantes +1',onUnlock:function(){}},
+  {id:'d2',name:'Renascido +1',desc:'Prestigie 3 vezes',cat:'prestige',req:function(s){return s.stats.prestigeCount>=3;},reward:'Diamantes +3',onUnlock:function(){}},
+  {id:'d3',name:'Renascido +2',desc:'Prestigie 5 vezes',cat:'prestige',req:function(s){return s.stats.prestigeCount>=5;},reward:'Diamantes +5',onUnlock:function(){}},
+  {id:'d4',name:'Patente Ouro',desc:'Atinga patente Ouro',cat:'prestige',req:function(s){return getRankStep(s.diamonds)>=10;},reward:'Recursos +3%',onUnlock:function(){}},
+  {id:'d5',name:'Patente Diamante',desc:'Atinga patente Diamante',cat:'prestige',req:function(s){return getRankStep(s.diamonds)>=20;},reward:'Recursos +5%',onUnlock:function(){}},
+  {id:'d6',name:'Patente Lendário',desc:'Atinga patente Lendário',cat:'prestige',req:function(s){return getRankStep(s.diamonds)>=35;},reward:'Recursos +10%',onUnlock:function(){}},
+  {id:'e1',name:'Primeiro Minerador',desc:'Compre 1 minerador',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=1;},reward:'Idle +5%',onUnlock:function(){}},
+  {id:'e2',name:'Frota de Mineradores',desc:'Tenha 6 mineradores diferentes',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=6;},reward:'Idle +15%',onUnlock:function(){}},
+  {id:'e3',name:'Força Total',desc:'Tenha todos os 8 mineradores',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=8;},reward:'Idle +30%',onUnlock:function(){}},
+  {id:'e4',name:'Upgrade Máximo',desc:'Compre 50 upgrades no total',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades)n+=s.upgrades[k];return n>=50;},reward:'Dano +5%',onUnlock:function(){}},
+  {id:'e5',name:'Colecionador de Picaretas',desc:'Compre todas as picaretas',cat:'mastery',req:function(s){return s.stats.boughtAllPickaxes;},reward:'Dano +10%',onUnlock:function(){}}
+];
+
 /* =========================================================
    PATENTES (estilo Free Fire) — 8 patentes x 5 sub-níveis
 ========================================================= */
@@ -618,18 +686,45 @@ function defaultState(){
       minerAldeao:0, minerFerreiro:0, minerGolem:0, minerGolemD:0, minerEsqueleto:0, minerPiglin:0, minerDragao:0, minerTita:0
     },
     clickPower:1, critChance:0.05, critMult:2, fortuneMult:1, idlePerSec:0,
-    comboCount:0, lastClickTime:0, collection:{}, newCollectionItems:0, lastSave:Date.now()
+    comboCount:0, lastClickTime:0, collection:{}, newCollectionItems:0,
+    achievements:{}, newAchievements:0,
+    stats:{totalClicks:0,totalBlocksBroken:0,totalCrits:0,bestCombo:0,prestigeCount:0,boughtAllPickaxes:false},
+    lastSave:Date.now()
   };
 }
 function rankMult(){ return 1 + getRankStep(state.diamonds)*0.05; }
 function recomputeStats(){
   var u = state.upgrades;
-  state.clickPower  = PICKAXES[state.pickaxeIndex].power;
-  state.critChance  = Math.min(0.5, 0.05 + u.luck*0.02);
+  var a = state.achievements;
+  var achBonus = {damage:0,critChance:0,fortune:0,idle:0};
+  for(var i=0;i<ACHIEVEMENTS.length;i++){
+    if(a[ACHIEVEMENTS[i].id]){
+      var id=ACHIEVEMENTS[i].id;
+      if(id==='a1'||id==='a5'||id==='b4'||id==='b5'||id==='b6'||id==='e4'||id==='e5') achBonus.damage+=0.01;
+      if(id==='a2') achBonus.damage+=0.03;
+      if(id==='a3') achBonus.damage+=0.05;
+      if(id==='a4') achBonus.damage+=0.08;
+      if(id==='b1') achBonus.critChance+=0.01;
+      if(id==='b2') achBonus.critChance+=0.02;
+      if(id==='b3') achBonus.critChance+=0.03;
+      if(id==='c1') achBonus.fortune+=0.05;
+      if(id==='c2') achBonus.fortune+=0.10;
+      if(id==='c3') achBonus.fortune+=0.15;
+      if(id==='c4') achBonus.fortune+=0.25;
+      if(id==='d4') achBonus.fortune+=0.03;
+      if(id==='d5') achBonus.fortune+=0.05;
+      if(id==='d6') achBonus.fortune+=0.10;
+      if(id==='e1') achBonus.idle+=0.05;
+      if(id==='e2') achBonus.idle+=0.15;
+      if(id==='e3') achBonus.idle+=0.30;
+    }
+  }
+  state.clickPower  = PICKAXES[state.pickaxeIndex].power * (1+achBonus.damage);
+  state.critChance  = Math.min(0.5, 0.05 + u.luck*0.02 + achBonus.critChance);
   state.critMult    = 2 + u.precision*0.5;
-  state.fortuneMult = 1 + u.fortune*0.1;
-  state.idlePerSec  = u.minerAldeao*1 + u.minerFerreiro*4 + u.minerGolem*15 + u.minerGolemD*60 +
-                       u.minerEsqueleto*220 + u.minerPiglin*800 + u.minerDragao*3000 + u.minerTita*12000;
+  state.fortuneMult = 1 + u.fortune*0.1 + achBonus.fortune;
+  state.idlePerSec  = (u.minerAldeao*1 + u.minerFerreiro*4 + u.minerGolem*15 + u.minerGolemD*60 +
+                       u.minerEsqueleto*220 + u.minerPiglin*800 + u.minerDragao*3000 + u.minerTita*12000) * (1+achBonus.idle);
 }
 function calcDiamondGain(total){ return Math.floor(Math.sqrt(Math.max(0,total)/1000)); }
 
@@ -846,6 +941,7 @@ function breakBlock(){
     value *= 2; spawnFloatingText(BLOCK_CX, BLOCK_CY-55, 'GANÂNCIA! x2', '#ffd700', true);
   }
   state.resources += value; state.totalEarned += value; state.blocksBrokenInTier++;
+  state.stats.totalBlocksBroken++;
 
   var bColor = tier.speckle||tier.light;
   spawnParticles(BLOCK_CX, BLOCK_CY, bColor, 26);
@@ -888,6 +984,10 @@ function handleTap(x,y){
   var dmg = state.clickPower * comboMult * (isCrit ? state.critMult : 1);
   dmg = Math.max(1, Math.round(dmg));
   state.blockHp -= dmg;
+
+  state.stats.totalClicks++;
+  if(isCrit) state.stats.totalCrits++;
+  if(state.comboCount>state.stats.bestCombo) state.stats.bestCombo=state.comboCount;
 
   var tier = currentTier();
   var hitColor = tier.speckle||tier.light;
@@ -1178,6 +1278,61 @@ var tierDisplay = document.getElementById('tierDisplay');
 var comboBar = document.getElementById('comboBar');
 var rankName = document.getElementById('rankName');
 var lastRankStep = 0;
+var pendingAchNotify = '';
+
+function checkAchievements(){
+  var a=state.achievements;
+  for(var i=0;i<ACHIEVEMENTS.length;i++){
+    var ach=ACHIEVEMENTS[i];
+    if(!a[ach.id] && ach.req(state)){
+      a[ach.id]=Date.now();
+      state.newAchievements=(state.newAchievements||0)+1;
+      pendingAchNotify=ach;
+      recomputeStats();
+    }
+  }
+}
+
+function renderAchievements(){
+  state.newAchievements=0;
+  var el=document.getElementById('achievementList');
+  el.style.display='block';
+  document.getElementById('statsContent').style.display='none';
+  var html='';
+  for(var i=0;i<ACHIEVEMENTS.length;i++){
+    var a=ACHIEVEMENTS[i];
+    var unlocked=!!state.achievements[a.id];
+    var catColor=ACH_CATEGORIES[a.cat]||'#888';
+    html+='<div class="ach-card'+(unlocked?' unlocked':'')+'">';
+    html+='<div class="ach-icon">'+iconEl('star',unlocked?catColor:'#666',24).innerHTML+'</div>';
+    html+='<div class="ach-info"><div class="ach-name" style="color:'+catColor+'">'+(unlocked?'✓ ':'')+a.name+'</div>';
+    html+='<div class="ach-desc">'+a.desc+'</div>';
+    html+='<div class="ach-reward">'+a.reward+'</div></div>';
+    html+='<div class="ach-status '+(unlocked?'done':'locked')+'">'+(unlocked?'FEITO':'🔒')+'</div>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+function renderStats(){
+  var el=document.getElementById('statsContent');
+  el.style.display='block';
+  document.getElementById('achievementList').style.display='none';
+  var s=state.stats;
+  var collected=0; for(var k in state.collection) collected++;
+  var totalUpgrades=0; for(var k2 in state.upgrades) totalUpgrades+=state.upgrades[k2];
+  el.innerHTML='<div class="stats-panel">'+
+    '<b>⚡ Cliques totais:</b> '+format(s.totalClicks)+'<br>'+
+    '<b>🪨 Blocos quebrados:</b> '+format(s.totalBlocksBroken)+'<br>'+
+    '<b>💥 Críticos:</b> '+format(s.totalCrits)+'<br>'+
+    '<b>🔥 Melhor combo:</b> '+s.bestCombo+'<br>'+
+    '<b>🔄 Prestígios:</b> '+s.prestigeCount+'<br>'+
+    '<b>💎 Diamantes totais:</b> '+state.diamonds+'<br>'+
+    '<b>📦 Itens coletados:</b> '+collected+'/'+COLLECTIBLES.length+'<br>'+
+    '<b>⬆️ Upgrades comprados:</b> '+totalUpgrades+'<br>'+
+    '<b>🏆 Conquistas:</b> '+(function(){var n=0;for(var k3 in state.achievements)n++;return n;})()+'/'+ACHIEVEMENTS.length+
+  '</div>';
+}
 
 function countBuyableUpgrades(){
   var c=0;
@@ -1207,17 +1362,33 @@ function updateHUD(){
   if(step > lastRankStep){ showRankUp(getRankInfo(step)); }
   lastRankStep = step;
 
+  checkAchievements();
+  if(pendingAchNotify){
+    var pa=pendingAchNotify;
+    pendingAchNotify='';
+    var catColor=ACH_CATEGORIES[pa.cat]||'#ffd700';
+    showToast('🏆 CONQUISTA: '+pa.name,catColor);
+    spawnFloatingText(BLOCK_CX,BLOCK_CY-100,'🏆 '+pa.name,catColor,true);
+    ensureAudio();
+    beep(880,0.12,'triangle',0.18,0);
+    beep(1100,0.12,'triangle',0.14,0.08);
+    beep(1320,0.2,'triangle',0.12,0.16);
+    spawnParticles(BLOCK_CX,BLOCK_CY,catColor,20);
+  }
+
   var bShop=countBuyableUpgrades();
   var bPg=countPrestigeGain();
   var bColl=state.newCollectionItems||0;
+  var bAch=state.newAchievements||0;
   [
     ['badgeShop','badgeShopSt'],
     ['badgePrestige','badgePrestigeSt'],
-    ['badgeCollection','badgeCollectionSt']
+    ['badgeCollection','badgeCollectionSt'],
+    ['badgeAchievements','badgeAchievementsSt']
   ].forEach(function(ids){
     var el1=document.getElementById(ids[0]);
     var el2=document.getElementById(ids[1]);
-    var n=ids[0]==='badgeShop'?bShop:(ids[0]==='badgePrestige'?bPg:bColl);
+    var n=ids[0]==='badgeShop'?bShop:(ids[0]==='badgePrestige'?bPg:(ids[0]==='badgeCollection'?bColl:bAch));
     if(el1){ el1.textContent=n>0?n:''; el1.classList.toggle('show',n>0); }
     if(el2){ el2.textContent=n>0?n:''; el2.classList.toggle('show',n>0); }
   });
@@ -1298,6 +1469,7 @@ function buyPickaxe(idx){
   if(state.resources < pk.cost) return;
   state.resources -= pk.cost;
   state.pickaxeIndex = idx;
+  if(idx===PICKAXES.length-1) state.stats.boughtAllPickaxes=true;
   recomputeStats();
   ensureAudio(); playBuySound();
   showToast('Picareta equipada: '+pk.name, pk.color);
@@ -1322,6 +1494,14 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     btn.classList.add('active');
     activeTab = btn.getAttribute('data-tab');
     renderShop();
+  });
+});
+document.querySelectorAll('[data-achtab]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('[data-achtab]').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    if(btn.getAttribute('data-achtab')==='list') renderAchievements();
+    else renderStats();
   });
 });
 
@@ -1357,6 +1537,7 @@ function doPrestige(){
   var gain = calcDiamondGain(state.totalEarned);
   if(gain <= 0) return;
   state.diamonds += gain;
+  state.stats.prestigeCount++;
   state.resources = 0; state.totalEarned = 0; state.pickaxeIndex = 0;
   state.upgrades = {
     fortune:0, luck:0, precision:0, berserker:0, midnight:0, greed:0, fragment:0, minerLuck:0,
@@ -1428,6 +1609,7 @@ function closePanel(id){
 document.getElementById('btnShop').addEventListener('click', function(){ renderShop(); openPanel('shopOverlay'); });
 document.getElementById('btnPrestige').addEventListener('click', function(){ renderPrestige(); openPanel('prestigeOverlay'); });
 document.getElementById('btnCollection').addEventListener('click', function(){ renderCollection(); openPanel('collectionOverlay'); });
+document.getElementById('btnAchievements').addEventListener('click', function(){ renderAchievements(); openPanel('achievementOverlay'); });
 document.querySelectorAll('[data-close]').forEach(function(el){
   el.addEventListener('click', function(){ closePanel(el.getAttribute('data-close')); });
 });
@@ -1442,6 +1624,7 @@ document.querySelectorAll('.st-tab').forEach(function(tab){
     if(target==='shopOverlay') renderShop();
     else if(target==='prestigeOverlay') renderPrestige();
     else if(target==='collectionOverlay') renderCollection();
+    else if(target==='achievementOverlay') renderAchievements();
     openPanel(target);
   });
 });
