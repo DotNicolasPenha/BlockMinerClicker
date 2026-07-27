@@ -48,6 +48,16 @@
     border-top:3px solid var(--panel-shadow); border-left:3px solid var(--panel-shadow);
     border-bottom:3px solid var(--panel-light); border-right:3px solid var(--panel-light);
   }
+  .mc-btn, .st-tab{ position:relative; }
+  .badge{
+    position:absolute; top:-5px; right:-5px;
+    min-width:16px; height:16px; z-index:15;
+    background:#f6d32d; border:2px solid #000;
+    font-size:6px; font-family:'Press Start 2P',monospace;
+    color:#3a2a00; line-height:12px; text-align:center;
+    display:none; align-items:center; justify-content:center; padding:0 3px;
+  }
+  .badge.show{ display:flex; }
 
   .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; }
   .sheet-header .close-x{ background:var(--danger); color:#fff; border:2px solid #000; width:22px; height:22px; text-align:center; line-height:20px; cursor:pointer; font-size:10px; }
@@ -249,17 +259,17 @@
     <div id="comboBarWrap"><div id="comboBar"></div></div>
 
     <div id="bottomNav">
-      <button class="mc-btn" id="btnShop">LOJA</button>
-      <button class="mc-btn" id="btnPrestige">PATENTE</button>
-      <button class="mc-btn" id="btnCollection">COLEÇÃO</button>
+      <button class="mc-btn" id="btnShop">LOJA<span class="badge" id="badgeShop"></span></button>
+      <button class="mc-btn" id="btnPrestige">PATENTE<span class="badge" id="badgePrestige"></span></button>
+      <button class="mc-btn" id="btnCollection">COLEÇÃO<span class="badge" id="badgeCollection"></span></button>
     </div>
   </div>
 
   <div id="sidebar">
     <div class="sidebar-tabs">
-      <div class="st-tab active" data-sidebar="shopOverlay">LOJA</div>
-      <div class="st-tab" data-sidebar="prestigeOverlay">PATENTE</div>
-      <div class="st-tab" data-sidebar="collectionOverlay">COLEÇÃO</div>
+      <div class="st-tab active" data-sidebar="shopOverlay">LOJA<span class="badge" id="badgeShopSt"></span></div>
+      <div class="st-tab" data-sidebar="prestigeOverlay">PATENTE<span class="badge" id="badgePrestigeSt"></span></div>
+      <div class="st-tab" data-sidebar="collectionOverlay">COLEÇÃO<span class="badge" id="badgeCollectionSt"></span></div>
     </div>
     <div class="sidebar-body">
       <div class="panel-overlay hidden" id="shopOverlay">
@@ -509,6 +519,9 @@ var UPGRADES = [
   {id:'minerTita',     name:'Titã do Vazio',           desc:'+12000 recursos/segundo (idle)', category:'miner', baseCost:14000000, costMult:1.22, iconKind:'miner', color:'#ff2ec4'}
 ];
 
+var MINER_ORDER = ['minerAldeao','minerFerreiro','minerGolem','minerGolemD','minerEsqueleto','minerPiglin','minerDragao','minerTita'];
+var MINER_COLORS = {minerAldeao:'#c9986b',minerFerreiro:'#e0965a',minerGolem:'#d8d8d8',minerGolemD:'#4be3d8',minerEsqueleto:'#e5e5c8',minerPiglin:'#ff9fc2',minerDragao:'#8a2be2',minerTita:'#ff2ec4'};
+
 /* =========================================================
    PATENTES (estilo Free Fire) — 8 patentes x 5 sub-níveis
 ========================================================= */
@@ -605,7 +618,7 @@ function defaultState(){
       minerAldeao:0, minerFerreiro:0, minerGolem:0, minerGolemD:0, minerEsqueleto:0, minerPiglin:0, minerDragao:0, minerTita:0
     },
     clickPower:1, critChance:0.05, critMult:2, fortuneMult:1, idlePerSec:0,
-    comboCount:0, lastClickTime:0, collection:{}, lastSave:Date.now()
+    comboCount:0, lastClickTime:0, collection:{}, newCollectionItems:0, lastSave:Date.now()
   };
 }
 function rankMult(){ return 1 + getRankStep(state.diamonds)*0.05; }
@@ -721,9 +734,11 @@ var crackCache = [];
 function buildCrackStage(stage){
   var c = document.createElement('canvas'); c.width=TEX_SIZE; c.height=TEX_SIZE;
   var ctx = c.getContext('2d'); var rng = mulberry32(9000+stage);
-  var count = 6 + stage*10;
-  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  var count = 10 + stage*14;
+  ctx.fillStyle = 'rgba(0,0,0,0.92)';
   for(var i=0;i<count;i++){ ctx.fillRect(Math.floor(rng()*TEX_SIZE), Math.floor(rng()*TEX_SIZE), 1, 1); }
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  for(var j=0;j<stage*2;j++){ ctx.fillRect(Math.floor(rng()*(TEX_SIZE-1)), Math.floor(rng()*(TEX_SIZE-1)), 2, 2); }
   return c;
 }
 for(var s=0; s<4; s++){ crackCache.push(buildCrackStage(s)); }
@@ -748,7 +763,7 @@ function beep(freq, dur, type, vol, delay){
   osc.start(t0); osc.stop(t0+dur);
 }
 function playClickSound(isCrit){ beep(isCrit?880:520, 0.08, 'square', 0.10); }
-function playBreakSound(){ beep(220,0.15,'sawtooth',0.16); beep(140,0.2,'square',0.10,0.05); }
+function playBreakSound(){ beep(180,0.2,'sawtooth',0.18); beep(100,0.3,'square',0.14,0.05); beep(60,0.45,'sawtooth',0.10,0.12); }
 function playBuySound(){ beep(660,0.09,'triangle',0.14); beep(880,0.09,'triangle',0.12,0.07); }
 function playPrestigeSound(){ [440,554,659,880].forEach(function(f,i){ beep(f,0.25,'triangle',0.15,i*0.12); }); }
 function playRareSound(){ [660,880,1100,1320].forEach(function(f,i){ beep(f,0.18,'triangle',0.18,i*0.09); }); }
@@ -764,6 +779,15 @@ var BLOCK_CX = W/2, BLOCK_CY = 300;
 
 var particles = [];
 var floatingTexts = [];
+var shockwaves = [];
+var screenFlash = {alpha:0, color:null};
+var minerProjectiles = [];
+var minerFireTimer = 0;
+var minerSwingTimers = [0,0,0,0,0,0,0,0];
+var incomeFloaterTimer = 0;
+var fragmentTimer = 0;
+var tierTransitionTimer = -1;
+var comboFlashTimer = 0;
 var shakeMag = 0;
 var punch = 0;
 
@@ -774,6 +798,7 @@ function spawnParticles(x,y,color,count){
   }
 }
 function spawnFloatingText(x,y,text,color,big){ floatingTexts.push({x:x,y:y,text:text,color:color,alpha:1,vy:-38,big:!!big}); }
+function spawnShockwave(x,y,maxRadius,color,alpha){ shockwaves.push({x:x,y:y,radius:2,maxRadius:maxRadius||80,alpha:alpha||0.6,color:color||'#ffffff'}); }
 function format(n){
   n = Math.floor(n);
   if(n < 1000) return String(n);
@@ -804,6 +829,7 @@ function rollForCollectible(){
       var item = pool[Math.floor(Math.random()*pool.length)];
       var isNew = !state.collection[item.id];
       state.collection[item.id] = Date.now();
+      if(isNew) state.newCollectionItems = (state.newCollectionItems||0)+1;
       ensureAudio(); playRareSound(); vibrate([20,30,20,30,20]);
       showToast((isNew?'NOVO! ':'')+item.name+' — '+r.name, r.color);
       spawnFloatingText(BLOCK_CX, BLOCK_CY-90, r.name+'!', r.color, true);
@@ -820,16 +846,28 @@ function breakBlock(){
     value *= 2; spawnFloatingText(BLOCK_CX, BLOCK_CY-55, 'GANÂNCIA! x2', '#ffd700', true);
   }
   state.resources += value; state.totalEarned += value; state.blocksBrokenInTier++;
-  spawnParticles(BLOCK_CX, BLOCK_CY, tier.speckle||tier.light, 26);
+
+  var bColor = tier.speckle||tier.light;
+  spawnParticles(BLOCK_CX, BLOCK_CY, bColor, 26);
   spawnFloatingText(BLOCK_CX, BLOCK_CY-40, '+'+format(value), '#ffe066', true);
-  shakeMag = Math.max(shakeMag, 7);
+
+  if(state.blocksBrokenInTier >= tier.goal && state.tierIndex < TIERS.length-1){
+    spawnParticles(BLOCK_CX, BLOCK_CY, bColor, 40);
+    spawnShockwave(BLOCK_CX, BLOCK_CY, 150, bColor, 0.8);
+    screenFlash = { color: bColor, alpha: 0.45 };
+    shakeMag = Math.max(shakeMag, 14);
+
+    state.tierIndex++; state.blocksBrokenInTier = 0;
+    tierTransitionTimer = 0.12;
+    spawnFloatingText(BLOCK_CX, BLOCK_CY-70, 'NOVO BLOCO!', '#7ad1ff', true);
+  } else {
+    spawnShockwave(BLOCK_CX, BLOCK_CY, 120, bColor, 0.6);
+    screenFlash = { color: bColor, alpha: 0.3 };
+    shakeMag = Math.max(shakeMag, 10);
+  }
   playBreakSound(); vibrate([30,20,30]);
   rollForCollectible();
 
-  if(state.blocksBrokenInTier >= tier.goal && state.tierIndex < TIERS.length-1){
-    state.tierIndex++; state.blocksBrokenInTier = 0;
-    spawnFloatingText(BLOCK_CX, BLOCK_CY-70, 'NOVO BLOCO!', '#7ad1ff', true);
-  }
   var newTier = currentTier();
   state.blockMaxHp = newTier.baseHp; state.blockHp = newTier.baseHp;
   save();
@@ -852,10 +890,17 @@ function handleTap(x,y){
   state.blockHp -= dmg;
 
   var tier = currentTier();
-  spawnParticles(x, y, tier.speckle||tier.light, isCrit?12:6);
+  var hitColor = tier.speckle||tier.light;
+  spawnParticles(x, y, hitColor, isCrit?12:6);
+  spawnShockwave(x, y, isCrit?55:35, isCrit?'#ff5555':'#ffffff', isCrit?0.5:0.35);
   spawnFloatingText(x, y-10, (isCrit?'CRÍTICO! ':'')+'+'+format(dmg), isCrit?'#ff5555':'#ffffff', isCrit);
   playClickSound(isCrit); vibrate(isCrit?[15,10,15]:10);
   shakeMag = Math.max(shakeMag, isCrit?5:1.5); punch = 1;
+
+  if(state.comboCount===5||state.comboCount===10||state.comboCount===15||state.comboCount===20){
+    comboFlashTimer=0.35; spawnShockwave(BLOCK_CX,BLOCK_CY,90,'#ffd700',0.7);
+    screenFlash={color:'#ffd700',alpha:0.15};
+  }
 
   if(Math.random() < state.upgrades.fragment*0.04){
     state.blockHp -= dmg;
@@ -901,6 +946,70 @@ function update(dt){
     f.y += f.vy*dt; f.alpha -= dt*1.1;
     if(f.alpha <= 0) floatingTexts.splice(j,1);
   }
+
+  for(var swi=shockwaves.length-1;swi>=0;swi--){
+    var sw=shockwaves[swi];
+    sw.radius+=(sw.maxRadius-sw.radius)*dt*4;
+    sw.alpha-=dt*1.8;
+    if(sw.alpha<=0) shockwaves.splice(swi,1);
+  }
+  if(screenFlash.alpha>0){ screenFlash.alpha-=dt*1.2; if(screenFlash.alpha<0) screenFlash.alpha=0; }
+
+  for(var pi=minerProjectiles.length-1;pi>=0;pi--){
+    var pr=minerProjectiles[pi];
+    pr.progress+=dt/pr.duration;
+    if(pr.progress>=1){
+      spawnParticles(BLOCK_CX,BLOCK_CY,pr.color,4);
+      minerProjectiles.splice(pi,1);
+    } else {
+      pr.x=pr.startX+(BLOCK_CX-pr.startX)*pr.progress;
+      pr.y=pr.startY+(BLOCK_CY-pr.startY)*pr.progress;
+    }
+  }
+  var activeMiners=0;
+  for(var mi=0;mi<8;mi++){ if(state.upgrades[MINER_ORDER[mi]]>0) activeMiners++; }
+  if(activeMiners>0){
+    minerFireTimer+=dt*(1+activeMiners*0.08);
+    if(minerFireTimer>=0.7){
+      minerFireTimer=0;
+      var activeIndices=[];
+      for(var mi2=0;mi2<8;mi2++){ if(state.upgrades[MINER_ORDER[mi2]]>0) activeIndices.push(mi2); }
+      var chosen=activeIndices[Math.floor(Math.random()*activeIndices.length)];
+      var side=chosen%2===0?30:W-30;
+      var baseY=470+Math.floor(chosen/2)*46;
+      minerProjectiles.push({x:side,y:baseY,startX:side,startY:baseY,progress:0,duration:0.2+Math.random()*0.15,color:MINER_COLORS[MINER_ORDER[chosen]]});
+      minerSwingTimers[chosen]=0.12;
+    }
+  }
+  for(var ms=0;ms<minerSwingTimers.length;ms++){ if(minerSwingTimers[ms]>0) minerSwingTimers[ms]-=dt; }
+
+  var dmgPct=state.blockHp>0?1-state.blockHp/state.blockMaxHp:0;
+  if(dmgPct>0.5&&state.blockHp>0){
+    fragmentTimer+=dt;
+    if(fragmentTimer>0.07){ fragmentTimer=0; var ft=currentTier(); spawnParticles(BLOCK_CX+(Math.random()-0.5)*80,BLOCK_CY+(Math.random()-0.5)*80,ft.dark||ft.base,1); }
+  }
+
+  if(state.idlePerSec>0){
+    incomeFloaterTimer+=dt*(1+state.idlePerSec*0.0005);
+    if(incomeFloaterTimer>1.2){
+      incomeFloaterTimer=0;
+      var ig=Math.floor(state.idlePerSec*rankMult()*state.fortuneMult*0.06);
+      if(ig>0) spawnFloatingText(W/2-60+Math.random()*120,490+Math.random()*40,'+'+format(ig),'#ffe066',false);
+    }
+  }
+
+  if(comboFlashTimer>0) comboFlashTimer-=dt;
+  if(tierTransitionTimer>0){
+    tierTransitionTimer-=dt;
+    if(tierTransitionTimer<=0&&tierTransitionTimer>-5){
+      tierTransitionTimer=-999;
+      var nt=currentTier();
+      spawnParticles(BLOCK_CX,BLOCK_CY,nt.speckle||nt.light,35);
+      spawnShockwave(BLOCK_CX,BLOCK_CY,130,nt.speckle||nt.light,0.7);
+      screenFlash={color:nt.speckle||nt.light,alpha:0.3};
+    }
+  }
+
   hudTimer += dt;
   if(hudTimer > 0.1){ hudTimer = 0; updateHUD(); }
 }
@@ -925,22 +1034,25 @@ function drawBackground(now){
 }
 
 function drawMiners(now){
-  var order = ['minerAldeao','minerFerreiro','minerGolem','minerGolemD','minerEsqueleto','minerPiglin','minerDragao','minerTita'];
-  var colors = {minerAldeao:'#c9986b',minerFerreiro:'#e0965a',minerGolem:'#d8d8d8',minerGolemD:'#4be3d8',minerEsqueleto:'#e5e5c8',minerPiglin:'#ff9fc2',minerDragao:'#8a2be2',minerTita:'#ff2ec4'};
   var slot = 0;
-  for(var k=0;k<order.length;k++){
-    var lvl = state.upgrades[order[k]];
+  for(var k=0;k<MINER_ORDER.length;k++){
+    var lvl = state.upgrades[MINER_ORDER[k]];
     if(lvl <= 0) continue;
     if(slot >= 6) break;
     var side = slot%2===0 ? 30 : W-30;
     var baseY = 470 + Math.floor(slot/2)*46;
-    var bob = Math.sin(now/300 + slot)*4;
-    ctx.fillStyle = colors[order[k]];
+    var swing = minerSwingTimers[k]>0 ? Math.sin(minerSwingTimers[k]/0.12*Math.PI)*7 : 0;
+    var bob = Math.sin(now/300 + slot)*4 + swing;
+    ctx.fillStyle = MINER_COLORS[MINER_ORDER[k]];
     ctx.fillRect(side-9, baseY+bob-9, 18, 18);
     ctx.fillStyle = '#0d0b08';
     ctx.fillRect(side-6, baseY+bob-5, 2, 2); ctx.fillRect(side+2, baseY+bob-5, 2, 2);
     ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
     ctx.strokeRect(side-9, baseY+bob-9, 18, 18);
+    if(swing>0){
+      ctx.fillStyle = MINER_COLORS[MINER_ORDER[k]];
+      ctx.fillRect(side+(swing>0?6:-12), baseY+bob-12, 4, 6);
+    }
     ctx.fillStyle = '#fff'; ctx.font = "6px 'Press Start 2P'"; ctx.textAlign = 'center';
     ctx.fillText('x'+lvl, side, baseY+bob+18);
     slot++;
@@ -968,9 +1080,23 @@ function drawBlock(now){
     ctx.globalAlpha = pulse; ctx.fillStyle = tier.speckle; ctx.fillRect(x,y,size,size); ctx.globalAlpha = 1;
   }
 
-  var dmgPct = 1 - (state.blockHp/state.blockMaxHp);
+  var dmgPct = state.blockHp>0 ? 1-(state.blockHp/state.blockMaxHp) : 0;
   var stage = Math.min(3, Math.floor(dmgPct*4));
   if(dmgPct > 0.05){ ctx.drawImage(crackCache[stage], 0,0,TEX_SIZE,TEX_SIZE, x, y, size, size); }
+
+  if(dmgPct>0.75 && state.blockHp>0){
+    var sp=0.08+Math.sin(now/150)*0.06;
+    ctx.globalAlpha=sp; ctx.fillStyle='#ff3333'; ctx.fillRect(x-3,y-3,size+6,size+6); ctx.globalAlpha=1;
+  }
+  if(state.comboCount>5){
+    var cg=(state.comboCount/20)*0.15;
+    var ch=(now/50)%360;
+    ctx.globalAlpha=cg; ctx.fillStyle='hsl('+ch+',100%,60%)'; ctx.fillRect(x-4,y-4,size+8,size+8); ctx.globalAlpha=1;
+  }
+  if(comboFlashTimer>0){
+    var cf=comboFlashTimer/0.35;
+    ctx.globalAlpha=cf*0.4; ctx.fillStyle='#ffd700'; ctx.fillRect(x-6,y-6,size+12,size+12); ctx.globalAlpha=1;
+  }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3; ctx.strokeRect(x,y,size,size);
   ctx.restore();
@@ -982,6 +1108,32 @@ function drawBlock(now){
   ctx.fillStyle = '#5ec14a'; ctx.fillRect(barX, barY, barW*Math.max(0,state.blockHp/state.blockMaxHp), barH);
 }
 
+function drawShockwaves(){
+  for(var i=0;i<shockwaves.length;i++){
+    var s=shockwaves[i];
+    ctx.globalAlpha=Math.max(0,s.alpha);
+    ctx.strokeStyle=s.color; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.radius,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+function drawProjectiles(){
+  for(var i=0;i<minerProjectiles.length;i++){
+    var p=minerProjectiles[i];
+    ctx.fillStyle=p.color;
+    ctx.fillRect(p.x-2,p.y-2,4,4);
+    ctx.fillStyle='#fff';
+    ctx.fillRect(p.x-1,p.y-1,2,2);
+  }
+}
+function drawScreenFlash(){
+  if(screenFlash.alpha>0.01){
+    ctx.globalAlpha=screenFlash.alpha;
+    ctx.fillStyle=screenFlash.color||'#fff';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha=1;
+  }
+}
 function drawParticles(){
   for(var i=0;i<particles.length;i++){
     var p = particles[i];
@@ -1006,8 +1158,9 @@ function draw(now){
   var sx = shakeMag>0 ? (Math.random()-0.5)*shakeMag : 0;
   var sy = shakeMag>0 ? (Math.random()-0.5)*shakeMag : 0;
   ctx.save(); ctx.translate(sx, sy);
-  drawBackground(now); drawMiners(now); drawBlock(now); drawParticles(); drawFloatingTexts();
+  drawBackground(now); drawMiners(now); drawBlock(now); drawProjectiles(); drawParticles(); drawShockwaves(); drawFloatingTexts();
   ctx.restore();
+  drawScreenFlash();
 }
 function loop(now){
   var dt = Math.min(0.05, (now-lastTime)/1000);
@@ -1026,6 +1179,16 @@ var comboBar = document.getElementById('comboBar');
 var rankName = document.getElementById('rankName');
 var lastRankStep = 0;
 
+function countBuyableUpgrades(){
+  var c=0;
+  if(state.pickaxeIndex+1<PICKAXES.length&&state.resources>=PICKAXES[state.pickaxeIndex+1].cost) c++;
+  for(var i=0;i<UPGRADES.length;i++){
+    if(state.resources>=upgradeCost(UPGRADES[i])) c++;
+  }
+  return c;
+}
+function countPrestigeGain(){ return calcDiamondGain(state.totalEarned); }
+
 function updateHUD(){
   resourceDisplay.textContent = format(state.resources);
   var idleTotal = state.idlePerSec * rankMult() * state.fortuneMult;
@@ -1043,6 +1206,21 @@ function updateHUD(){
 
   if(step > lastRankStep){ showRankUp(getRankInfo(step)); }
   lastRankStep = step;
+
+  var bShop=countBuyableUpgrades();
+  var bPg=countPrestigeGain();
+  var bColl=state.newCollectionItems||0;
+  [
+    ['badgeShop','badgeShopSt'],
+    ['badgePrestige','badgePrestigeSt'],
+    ['badgeCollection','badgeCollectionSt']
+  ].forEach(function(ids){
+    var el1=document.getElementById(ids[0]);
+    var el2=document.getElementById(ids[1]);
+    var n=ids[0]==='badgeShop'?bShop:(ids[0]==='badgePrestige'?bPg:bColl);
+    if(el1){ el1.textContent=n>0?n:''; el1.classList.toggle('show',n>0); }
+    if(el2){ el2.textContent=n>0?n:''; el2.classList.toggle('show',n>0); }
+  });
 }
 function showRankUp(info){
   var el = document.createElement('div');
@@ -1198,6 +1376,7 @@ function doPrestige(){
 var collectionGrid = document.getElementById('collectionGrid');
 var collectionHeader = document.getElementById('collectionHeader');
 function renderCollection(){
+  state.newCollectionItems = 0;
   var found = 0;
   for(var k in state.collection){ if(state.collection[k]) found++; }
   collectionHeader.textContent = 'MURAL DE RARIDADES ('+found+'/'+COLLECTIBLES.length+')';
