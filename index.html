@@ -697,6 +697,7 @@ function defaultState(){
     comboCount:0, lastClickTime:0, collection:{}, newCollectionItems:0,
     achievements:{}, newAchievements:0,
     stats:{totalClicks:0,totalBlocksBroken:0,totalCrits:0,bestCombo:0,prestigeCount:0,boughtAllPickaxes:false},
+    mastery:{},
     lastSave:Date.now()
   };
 }
@@ -727,7 +728,9 @@ function recomputeStats(){
       if(id==='e3') achBonus.idle+=0.30;
     }
   }
-  state.clickPower  = PICKAXES[state.pickaxeIndex].power * (1+achBonus.damage);
+  var masteryTotal=0; for(var mk in state.mastery) masteryTotal+=state.mastery[mk];
+  var masteryBonus=Math.floor(masteryTotal/200)*0.01;
+  state.clickPower  = PICKAXES[state.pickaxeIndex].power * (1+achBonus.damage+masteryBonus);
   state.critChance  = Math.min(0.5, 0.05 + u.luck*0.02 + achBonus.critChance);
   state.critMult    = 2 + u.precision*0.5;
   state.fortuneMult = 1 + u.fortune*0.1 + achBonus.fortune;
@@ -950,10 +953,21 @@ function breakBlock(){
   }
   state.resources += value; state.totalEarned += value; state.blocksBrokenInTier++;
   state.stats.totalBlocksBroken++;
+  state.mastery[tier.id] = (state.mastery[tier.id]||0)+1;
 
+  var isBoss = state.tierIndex>0 && state.tierIndex%5===4;
+  if(isBoss){ value*=2; }
   var bColor = tier.speckle||tier.light;
-  spawnParticles(BLOCK_CX, BLOCK_CY, bColor, 26);
+  spawnParticles(BLOCK_CX, BLOCK_CY, bColor, isBoss?55:26);
   spawnFloatingText(BLOCK_CX, BLOCK_CY-40, '+'+format(value), '#ffe066', true);
+
+  if(isBoss){
+    spawnShockwave(BLOCK_CX,BLOCK_CY,160,bColor,0.9);
+    screenFlash={color:bColor,alpha:0.5};
+    shakeMag=Math.max(shakeMag,16);
+    beep(110,0.3,'sawtooth',0.2); beep(80,0.4,'square',0.15,0.1);
+    spawnFloatingText(BLOCK_CX,BLOCK_CY-55,'💀 BOSS! x2','#ff5555',true);
+  }
 
   if(state.blocksBrokenInTier >= tier.goal && state.tierIndex < TIERS.length-1){
     spawnParticles(BLOCK_CX, BLOCK_CY, bColor, 40);
@@ -1289,6 +1303,14 @@ function drawBlock(now){
     for(var ei=0;ei<EVENTS.length;ei++){ if(EVENTS[ei].id===activeEvent.id){ evColor=EVENTS[ei].color; break; } }
     var ea=0.12+Math.sin(now/120)*0.08;
     ctx.globalAlpha=ea; ctx.fillStyle=evColor; ctx.fillRect(x-5,y-5,size+10,size+10); ctx.globalAlpha=1;
+  }
+
+  var isBoss = state.tierIndex>0 && state.tierIndex%5===4;
+  if(isBoss){
+    var bp=0.15+Math.sin(now/200)*0.1;
+    ctx.globalAlpha=bp; ctx.strokeStyle='#ff5555'; ctx.lineWidth=5; ctx.strokeRect(x-4,y-4,size+8,size+8); ctx.globalAlpha=1;
+    ctx.fillStyle='#ff5555'; ctx.font="8px 'Press Start 2P'"; ctx.textAlign='center';
+    ctx.fillText('💀 BOSS',BLOCK_CX,y-16);
   }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3; ctx.strokeRect(x,y,size,size);
