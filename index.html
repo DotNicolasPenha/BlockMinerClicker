@@ -595,7 +595,10 @@ var ACHIEVEMENTS = [
   {id:'e2',name:'Frota de Mineradores',desc:'Tenha 6 mineradores diferentes',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=6;},reward:'Idle +15%',onUnlock:function(){}},
   {id:'e3',name:'Força Total',desc:'Tenha todos os 8 mineradores',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=8;},reward:'Idle +30%',onUnlock:function(){}},
   {id:'e4',name:'Upgrade Máximo',desc:'Compre 50 upgrades no total',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades)n+=s.upgrades[k];return n>=50;},reward:'Dano +5%',onUnlock:function(){}},
-  {id:'e5',name:'Colecionador de Picaretas',desc:'Compre todas as picaretas',cat:'mastery',req:function(s){return s.stats.boughtAllPickaxes;},reward:'Dano +10%',onUnlock:function(){}}
+  {id:'e5',name:'Colecionador de Picaretas',desc:'Compre todas as picaretas',cat:'mastery',req:function(s){return s.stats.boughtAllPickaxes;},reward:'Dano +10%',onUnlock:function(){}},
+  {id:'s1',name:'Minerador Noturno',desc:'Jogue por mais de 1 hora',cat:'mastery',secret:true,req:function(s){return s.stats.playTime>=3600;},reward:'Dano +5%',onUnlock:function(){}},
+  {id:'s2',name:'Colecionador Total',desc:'Encontre todos os 30 itens',cat:'collection',secret:true,req:function(s){var n=0;for(var k in s.collection)n++;return n>=30;},reward:'Sorte +30%',onUnlock:function(){}},
+  {id:'s3',name:'Lendário',desc:'Atinga patente Lendário V',cat:'prestige',secret:true,req:function(s){return getRankStep(s.diamonds)>=39;},reward:'Recursos +15%',onUnlock:function(){}}
 ];
 
 /* =========================================================
@@ -696,7 +699,7 @@ function defaultState(){
     clickPower:1, critChance:0.05, critMult:2, fortuneMult:1, idlePerSec:0,
     comboCount:0, lastClickTime:0, collection:{}, newCollectionItems:0,
     achievements:{}, newAchievements:0,
-    stats:{totalClicks:0,totalBlocksBroken:0,totalCrits:0,bestCombo:0,prestigeCount:0,boughtAllPickaxes:false},
+    stats:{totalClicks:0,totalBlocksBroken:0,totalCrits:0,bestCombo:0,prestigeCount:0,boughtAllPickaxes:false,playTime:0},
     mastery:{},
     lastSave:Date.now()
   };
@@ -726,6 +729,9 @@ function recomputeStats(){
       if(id==='e1') achBonus.idle+=0.05;
       if(id==='e2') achBonus.idle+=0.15;
       if(id==='e3') achBonus.idle+=0.30;
+      if(id==='s1') achBonus.damage+=0.05;
+      if(id==='s2') achBonus.fortune+=0.30;
+      if(id==='s3') achBonus.fortune+=0.15;
     }
   }
   var masteryTotal=0; for(var mk in state.mastery) masteryTotal+=state.mastery[mk];
@@ -1210,6 +1216,8 @@ function update(dt){
     if(activeEvent.timer<=0) endEvent();
   }
 
+  state.stats.playTime = (state.stats.playTime||0) + dt;
+
   hudTimer += dt;
   if(hudTimer > 0.1){ hudTimer = 0; updateHUD(); }
 }
@@ -1418,15 +1426,29 @@ function renderAchievements(){
     var a=ACHIEVEMENTS[i];
     var unlocked=!!state.achievements[a.id];
     var catColor=ACH_CATEGORIES[a.cat]||'#888';
+    var showName=a.secret&&!unlocked?'???':(unlocked?'✓ ':'')+a.name;
+    var showDesc=a.secret&&!unlocked?'???':a.desc;
+    var showReward=a.secret&&!unlocked?'???':a.reward;
     html+='<div class="ach-card'+(unlocked?' unlocked':'')+'">';
     html+='<div class="ach-icon">'+iconEl('star',unlocked?catColor:'#666',24).innerHTML+'</div>';
-    html+='<div class="ach-info"><div class="ach-name" style="color:'+catColor+'">'+(unlocked?'✓ ':'')+a.name+'</div>';
-    html+='<div class="ach-desc">'+a.desc+'</div>';
-    html+='<div class="ach-reward">'+a.reward+'</div></div>';
+    html+='<div class="ach-info"><div class="ach-name" style="color:'+(unlocked?catColor:(a.secret?'#888':catColor))+'">'+showName+'</div>';
+    html+='<div class="ach-desc">'+showDesc+'</div>';
+    html+='<div class="ach-reward">'+showReward+'</div></div>';
     html+='<div class="ach-status '+(unlocked?'done':'locked')+'">'+(unlocked?'FEITO':'🔒')+'</div>';
     html+='</div>';
   }
+  html+='<div style="margin-top:12px;text-align:center;"><button class="mc-btn" id="shareAchBtn" style="font-size:7px;padding:8px;width:100%;">📤 COMPARTILHAR PATENTE</button></div>';
   el.innerHTML=html;
+  var shareBtn=document.getElementById('shareAchBtn');
+  if(shareBtn){
+    shareBtn.addEventListener('click',function(){
+      var ri=getRankInfo(getRankStep(state.diamonds));
+      var txt='🪨 Block Miner Clicker — Patente: '+ri.name+' (+'+Math.round((rankMult()-1)*100)+'%) | Conquistas: '+
+        (function(){var n=0;for(var k in state.achievements)n++;return n;})()+'/'+ACHIEVEMENTS.length;
+      if(navigator.share){ navigator.share({title:'Block Miner Clicker',text:txt}); }
+      else { navigator.clipboard.writeText(txt).then(function(){showToast('Copiado! Compartilhe onde quiser','#f6d32d');}); }
+    });
+  }
 }
 
 function renderStats(){
@@ -1436,16 +1458,25 @@ function renderStats(){
   var s=state.stats;
   var collected=0; for(var k in state.collection) collected++;
   var totalUpgrades=0; for(var k2 in state.upgrades) totalUpgrades+=state.upgrades[k2];
+  var playHours=Math.floor((s.playTime||0)/3600);
+  var playMins=Math.floor(((s.playTime||0)%3600)/60);
+  var achs=0; for(var k3 in state.achievements) achs++;
+  var bestTier=TIERS[state.tierIndex];
   el.innerHTML='<div class="stats-panel">'+
+    '<b>⏱️ Tempo de jogo:</b> '+playHours+'h '+playMins+'m<br>'+
     '<b>⚡ Cliques totais:</b> '+format(s.totalClicks)+'<br>'+
     '<b>🪨 Blocos quebrados:</b> '+format(s.totalBlocksBroken)+'<br>'+
-    '<b>💥 Críticos:</b> '+format(s.totalCrits)+'<br>'+
+    '<b>💥 Críticos:</b> '+format(s.totalCrits)+' ('+(s.totalClicks>0?Math.round(s.totalCrits/s.totalClicks*100):0)+'%)<br>'+
     '<b>🔥 Melhor combo:</b> '+s.bestCombo+'<br>'+
     '<b>🔄 Prestígios:</b> '+s.prestigeCount+'<br>'+
-    '<b>💎 Diamantes totais:</b> '+state.diamonds+'<br>'+
-    '<b>📦 Itens coletados:</b> '+collected+'/'+COLLECTIBLES.length+'<br>'+
-    '<b>⬆️ Upgrades comprados:</b> '+totalUpgrades+'<br>'+
-    '<b>🏆 Conquistas:</b> '+(function(){var n=0;for(var k3 in state.achievements)n++;return n;})()+'/'+ACHIEVEMENTS.length+
+    '<b>💎 Diamantes:</b> '+state.diamonds+'<br>'+
+    '<b>📦 Itens:</b> '+collected+'/'+COLLECTIBLES.length+'<br>'+
+    '<b>⬆️ Upgrades:</b> '+totalUpgrades+'<br>'+
+    '<b>🏆 Conquistas:</b> '+achs+'/'+ACHIEVEMENTS.length+'<br>'+
+    '<b>🪨 Bloco atual:</b> '+bestTier.name+' ('+format(state.blockHp)+'/'+format(state.blockMaxHp)+' HP)<br>'+
+    '<b>💰 Total minerado:</b> '+format(state.totalEarned)+'<br>'+
+    '<b>📊 Dano por clique:</b> '+format(Math.round(state.clickPower))+'<br>'+
+    '<b>⚙️ Idle/seg:</b> '+format(Math.round(state.idlePerSec*rankMult()*state.fortuneMult))+
   '</div>';
 }
 
