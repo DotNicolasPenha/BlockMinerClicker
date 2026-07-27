@@ -58,6 +58,13 @@
     display:none; align-items:center; justify-content:center; padding:0 3px;
   }
   .badge.show{ display:flex; }
+  #eventBanner{
+    position:absolute; top:132px; left:8px; right:8px; z-index:6;
+    padding:6px 8px; font-size:8px; text-align:center;
+    display:none; pointer-events:none;
+  }
+  #eventBanner .ev-name{ font-size:9px; font-weight:bold; }
+  #eventBanner .ev-timer{ font-size:11px; margin-top:2px; }
 
   .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; }
   .sheet-header .close-x{ background:var(--danger); color:#fff; border:2px solid #000; width:22px; height:22px; text-align:center; line-height:20px; cursor:pointer; font-size:10px; }
@@ -92,6 +99,24 @@
   #rankProgressWrap{ background:#000; height:14px; border:2px solid #000; margin:6px 0 14px; }
   #rankProgressBar{ height:100%; width:0%; background:linear-gradient(90deg,#c9a227,#f6d32d); }
 
+  #achievementList, #statsContent{ padding:10px; overflow-y:auto; font-size:8px; }
+  .ach-card{
+    display:flex; align-items:center; gap:8px; background:#dcdcdc;
+    border-top:2px solid #fff; border-left:2px solid #fff; border-bottom:2px solid #6b6b6b; border-right:2px solid #6b6b6b;
+    padding:8px; margin-bottom:8px;
+  }
+  .ach-card.unlocked{ background:#e8f5e9; border-color:#a5d6a7 #4caf50 #4caf50 #a5d6a7; }
+  .ach-icon{ width:28px; height:28px; flex:none; border:2px solid #000; background:#1c1c1c; display:flex; align-items:center; justify-content:center; }
+  .ach-icon canvas{ width:24px; height:24px; image-rendering:pixelated; }
+  .ach-info{ flex:1; line-height:1.6; min-width:0; }
+  .ach-info .ach-name{ font-size:8px; color:#1a1a1a; }
+  .ach-info .ach-desc{ font-size:6.5px; color:#555; }
+  .ach-info .ach-reward{ font-size:6.5px; color:#7a3ba0; }
+  .ach-status{ font-size:6px; white-space:nowrap; padding:4px 5px; border:2px solid #000; flex-shrink:0; }
+  .ach-status.done{ background:#4caf50; color:#fff; }
+  .ach-status.locked{ background:#8a8a8a; color:#ccc; }
+  .stats-panel{ margin-bottom:10px; padding:8px; background:#2b2b2b; color:#eee; border:2px solid #555; font-size:6.5px; line-height:1.8; }
+  .stats-panel b{ color:#f6d32d; }
   #collectionGrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
   .col-item{
     aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -257,11 +282,13 @@
     </div>
 
     <div id="comboBarWrap"><div id="comboBar"></div></div>
+    <div id="eventBanner" class="pixel-panel"><div class="ev-name"></div><div class="ev-timer"></div></div>
 
     <div id="bottomNav">
       <button class="mc-btn" id="btnShop">LOJA<span class="badge" id="badgeShop"></span></button>
       <button class="mc-btn" id="btnPrestige">PATENTE<span class="badge" id="badgePrestige"></span></button>
       <button class="mc-btn" id="btnCollection">COLEÇÃO<span class="badge" id="badgeCollection"></span></button>
+      <button class="mc-btn" id="btnAchievements">CONQUISTAS<span class="badge" id="badgeAchievements"></span></button>
     </div>
   </div>
 
@@ -270,6 +297,7 @@
       <div class="st-tab active" data-sidebar="shopOverlay">LOJA<span class="badge" id="badgeShopSt"></span></div>
       <div class="st-tab" data-sidebar="prestigeOverlay">PATENTE<span class="badge" id="badgePrestigeSt"></span></div>
       <div class="st-tab" data-sidebar="collectionOverlay">COLEÇÃO<span class="badge" id="badgeCollectionSt"></span></div>
+      <div class="st-tab" data-sidebar="achievementOverlay">CONQUISTAS<span class="badge" id="badgeAchievementsSt"></span></div>
     </div>
     <div class="sidebar-body">
       <div class="panel-overlay hidden" id="shopOverlay">
@@ -288,6 +316,18 @@
         <div class="sheet">
           <div class="sheet-header"><span>PATENTE DE MINERADOR</span><span class="close-x" data-close="prestigeOverlay">✕</span></div>
           <div id="prestigeContent"></div>
+        </div>
+      </div>
+
+      <div class="panel-overlay hidden" id="achievementOverlay">
+        <div class="sheet">
+          <div class="sheet-header"><span>CONQUISTAS</span><span class="close-x" data-close="achievementOverlay">✕</span></div>
+          <div style="padding:10px; display:flex; gap:4px;">
+            <div class="tab-btn active" data-achtab="list">LISTA</div>
+            <div class="tab-btn" data-achtab="stats">ESTATÍSTICAS</div>
+          </div>
+          <div id="achievementList"></div>
+          <div id="statsContent" style="display:none;"></div>
         </div>
       </div>
 
@@ -417,6 +457,17 @@ function makeIcon(kind, color){
       g.fillStyle = '#ffd700'; g.fillRect(5,5,6,6);
       g.fillStyle = '#0d0b08'; g.fillRect(6,6,4,4);
       break;
+    case 'star':
+      g.fillStyle = color;
+      g.fillRect(7,2,2,4); g.fillRect(5,5,6,2); g.fillRect(5,9,6,2); g.fillRect(7,10,2,4);
+      g.fillRect(2,7,4,2); g.fillRect(10,7,4,2);
+      break;
+    case 'skull':
+      g.fillStyle = '#e0e0e0';
+      g.fillRect(3,4,10,3); g.fillRect(5,7,6,3); g.fillRect(5,10,6,2); g.fillRect(4,11,8,2);
+      g.fillStyle = '#111'; g.fillRect(5,5,2,2); g.fillRect(9,5,2,2);
+      g.fillRect(6,8,4,1); g.fillRect(7,9,2,2);
+      break;
     default:
       g.fillStyle = color; g.fillRect(3,3,10,10);
   }
@@ -522,6 +573,40 @@ var UPGRADES = [
 var MINER_ORDER = ['minerAldeao','minerFerreiro','minerGolem','minerGolemD','minerEsqueleto','minerPiglin','minerDragao','minerTita'];
 var MINER_COLORS = {minerAldeao:'#c9986b',minerFerreiro:'#e0965a',minerGolem:'#d8d8d8',minerGolemD:'#4be3d8',minerEsqueleto:'#e5e5c8',minerPiglin:'#ff9fc2',minerDragao:'#8a2be2',minerTita:'#ff2ec4'};
 
+var ACH_CATEGORIES = { miner:'#5b8f3b', combat:'#ff1744', collection:'#ffd700', prestige:'#a259ff', mastery:'#2196f3' };
+
+var ACHIEVEMENTS = [
+  {id:'a1',name:'Primeiro Bloco',desc:'Quebre 1 bloco',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=1;},reward:'Dano +1%',onUnlock:function(){}},
+  {id:'a2',name:'Minerador Dedicado',desc:'Quebre 100 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=100;},reward:'Dano +3%',onUnlock:function(){}},
+  {id:'a3',name:'Minerador Experiente',desc:'Quebre 1.000 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=1000;},reward:'Dano +5%',onUnlock:function(){}},
+  {id:'a4',name:'Minerador Lendário',desc:'Quebre 10.000 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=10000;},reward:'Dano +8%',onUnlock:function(){}},
+  {id:'a5',name:'Mestre dos Blocos',desc:'Quebre 100.000 blocos',cat:'miner',req:function(s){return s.stats.totalBlocksBroken>=100000;},reward:'Dano +12%',onUnlock:function(){}},
+  {id:'b1',name:'Crítico!',desc:'Acerte 10 críticos',cat:'combat',req:function(s){return s.stats.totalCrits>=10;},reward:'Crítico +1%',onUnlock:function(){}},
+  {id:'b2',name:'Precisão',desc:'Acerte 100 críticos',cat:'combat',req:function(s){return s.stats.totalCrits>=100;},reward:'Crítico +2%',onUnlock:function(){}},
+  {id:'b3',name:'Mestre dos Críticos',desc:'Acerte 1.000 críticos',cat:'combat',req:function(s){return s.stats.totalCrits>=1000;},reward:'Crítico +3%',onUnlock:function(){}},
+  {id:'b4',name:'Combo 5',desc:'Atinga combo 5',cat:'combat',req:function(s){return s.stats.bestCombo>=5;},reward:'Dano +2%',onUnlock:function(){}},
+  {id:'b5',name:'Combo 10',desc:'Atinga combo 10',cat:'combat',req:function(s){return s.stats.bestCombo>=10;},reward:'Dano +4%',onUnlock:function(){}},
+  {id:'b6',name:'Combo 20',desc:'Atinga combo 20',cat:'combat',req:function(s){return s.stats.bestCombo>=20;},reward:'Dano +8%',onUnlock:function(){}},
+  {id:'c1',name:'Colecionador Iniciante',desc:'Encontre 1 item raro',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=1;},reward:'Sorte +5%',onUnlock:function(){}},
+  {id:'c2',name:'Colecionador',desc:'Encontre 5 itens raros',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=5;},reward:'Sorte +10%',onUnlock:function(){}},
+  {id:'c3',name:'Colecionador Ávido',desc:'Encontre 10 itens raros',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=10;},reward:'Sorte +15%',onUnlock:function(){}},
+  {id:'c4',name:'Colecionador Completo',desc:'Encontre 20 itens raros',cat:'collection',req:function(s){var n=0;for(var k in s.collection)n++;return n>=20;},reward:'Sorte +25%',onUnlock:function(){}},
+  {id:'d1',name:'Renascido',desc:'Prestigie 1 vez',cat:'prestige',req:function(s){return s.stats.prestigeCount>=1;},reward:'Diamantes +1',onUnlock:function(){}},
+  {id:'d2',name:'Renascido +1',desc:'Prestigie 3 vezes',cat:'prestige',req:function(s){return s.stats.prestigeCount>=3;},reward:'Diamantes +3',onUnlock:function(){}},
+  {id:'d3',name:'Renascido +2',desc:'Prestigie 5 vezes',cat:'prestige',req:function(s){return s.stats.prestigeCount>=5;},reward:'Diamantes +5',onUnlock:function(){}},
+  {id:'d4',name:'Patente Ouro',desc:'Atinga patente Ouro',cat:'prestige',req:function(s){return getRankStep(s.diamonds)>=10;},reward:'Recursos +3%',onUnlock:function(){}},
+  {id:'d5',name:'Patente Diamante',desc:'Atinga patente Diamante',cat:'prestige',req:function(s){return getRankStep(s.diamonds)>=20;},reward:'Recursos +5%',onUnlock:function(){}},
+  {id:'d6',name:'Patente Lendário',desc:'Atinga patente Lendário',cat:'prestige',req:function(s){return getRankStep(s.diamonds)>=35;},reward:'Recursos +10%',onUnlock:function(){}},
+  {id:'e1',name:'Primeiro Minerador',desc:'Compre 1 minerador',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=1;},reward:'Idle +5%',onUnlock:function(){}},
+  {id:'e2',name:'Frota de Mineradores',desc:'Tenha 6 mineradores diferentes',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=6;},reward:'Idle +15%',onUnlock:function(){}},
+  {id:'e3',name:'Força Total',desc:'Tenha todos os 8 mineradores',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades){if(k.indexOf('miner')===0&&s.upgrades[k]>0)n++;}return n>=8;},reward:'Idle +30%',onUnlock:function(){}},
+  {id:'e4',name:'Upgrade Máximo',desc:'Compre 50 upgrades no total',cat:'mastery',req:function(s){var n=0;for(var k in s.upgrades)n+=s.upgrades[k];return n>=50;},reward:'Dano +5%',onUnlock:function(){}},
+  {id:'e5',name:'Colecionador de Picaretas',desc:'Compre todas as picaretas',cat:'mastery',req:function(s){return s.stats.boughtAllPickaxes;},reward:'Dano +10%',onUnlock:function(){}},
+  {id:'s1',name:'Minerador Noturno',desc:'Jogue por mais de 1 hora',cat:'mastery',secret:true,req:function(s){return s.stats.playTime>=3600;},reward:'Dano +5%',onUnlock:function(){}},
+  {id:'s2',name:'Colecionador Total',desc:'Encontre todos os 30 itens',cat:'collection',secret:true,req:function(s){var n=0;for(var k in s.collection)n++;return n>=30;},reward:'Sorte +30%',onUnlock:function(){}},
+  {id:'s3',name:'Lendário',desc:'Atinga patente Lendário V',cat:'prestige',secret:true,req:function(s){return getRankStep(s.diamonds)>=39;},reward:'Recursos +15%',onUnlock:function(){}}
+];
+
 /* =========================================================
    PATENTES (estilo Free Fire) — 8 patentes x 5 sub-níveis
 ========================================================= */
@@ -618,18 +703,51 @@ function defaultState(){
       minerAldeao:0, minerFerreiro:0, minerGolem:0, minerGolemD:0, minerEsqueleto:0, minerPiglin:0, minerDragao:0, minerTita:0
     },
     clickPower:1, critChance:0.05, critMult:2, fortuneMult:1, idlePerSec:0,
-    comboCount:0, lastClickTime:0, collection:{}, newCollectionItems:0, lastSave:Date.now()
+    comboCount:0, lastClickTime:0, collection:{}, newCollectionItems:0,
+    achievements:{}, newAchievements:0,
+    stats:{totalClicks:0,totalBlocksBroken:0,totalCrits:0,bestCombo:0,prestigeCount:0,boughtAllPickaxes:false,playTime:0},
+    mastery:{},
+    lastSave:Date.now()
   };
 }
 function rankMult(){ return 1 + getRankStep(state.diamonds)*0.05; }
 function recomputeStats(){
   var u = state.upgrades;
-  state.clickPower  = PICKAXES[state.pickaxeIndex].power;
-  state.critChance  = Math.min(0.5, 0.05 + u.luck*0.02);
+  var a = state.achievements;
+  var achBonus = {damage:0,critChance:0,fortune:0,idle:0};
+  for(var i=0;i<ACHIEVEMENTS.length;i++){
+    if(a[ACHIEVEMENTS[i].id]){
+      var id=ACHIEVEMENTS[i].id;
+      if(id==='a1'||id==='a5'||id==='b4'||id==='b5'||id==='b6'||id==='e4'||id==='e5') achBonus.damage+=0.01;
+      if(id==='a2') achBonus.damage+=0.03;
+      if(id==='a3') achBonus.damage+=0.05;
+      if(id==='a4') achBonus.damage+=0.08;
+      if(id==='b1') achBonus.critChance+=0.01;
+      if(id==='b2') achBonus.critChance+=0.02;
+      if(id==='b3') achBonus.critChance+=0.03;
+      if(id==='c1') achBonus.fortune+=0.05;
+      if(id==='c2') achBonus.fortune+=0.10;
+      if(id==='c3') achBonus.fortune+=0.15;
+      if(id==='c4') achBonus.fortune+=0.25;
+      if(id==='d4') achBonus.fortune+=0.03;
+      if(id==='d5') achBonus.fortune+=0.05;
+      if(id==='d6') achBonus.fortune+=0.10;
+      if(id==='e1') achBonus.idle+=0.05;
+      if(id==='e2') achBonus.idle+=0.15;
+      if(id==='e3') achBonus.idle+=0.30;
+      if(id==='s1') achBonus.damage+=0.05;
+      if(id==='s2') achBonus.fortune+=0.30;
+      if(id==='s3') achBonus.fortune+=0.15;
+    }
+  }
+  var masteryTotal=0; for(var mk in state.mastery) masteryTotal+=state.mastery[mk];
+  var masteryBonus=Math.floor(masteryTotal/200)*0.01;
+  state.clickPower  = PICKAXES[state.pickaxeIndex].power * (1+achBonus.damage+masteryBonus);
+  state.critChance  = Math.min(0.5, 0.05 + u.luck*0.02 + achBonus.critChance);
   state.critMult    = 2 + u.precision*0.5;
-  state.fortuneMult = 1 + u.fortune*0.1;
-  state.idlePerSec  = u.minerAldeao*1 + u.minerFerreiro*4 + u.minerGolem*15 + u.minerGolemD*60 +
-                       u.minerEsqueleto*220 + u.minerPiglin*800 + u.minerDragao*3000 + u.minerTita*12000;
+  state.fortuneMult = 1 + u.fortune*0.1 + achBonus.fortune;
+  state.idlePerSec  = (u.minerAldeao*1 + u.minerFerreiro*4 + u.minerGolem*15 + u.minerGolemD*60 +
+                       u.minerEsqueleto*220 + u.minerPiglin*800 + u.minerDragao*3000 + u.minerTita*12000) * (1+achBonus.idle);
 }
 function calcDiamondGain(total){ return Math.floor(Math.sqrt(Math.max(0,total)/1000)); }
 
@@ -823,7 +941,7 @@ function rollForCollectible(){
   var roll = Math.random();
   for(var i=RARITIES.length-1;i>=0;i--){
     var r = RARITIES[i];
-    var chance = r.chance * luckBonus;
+    var chance = r.chance * luckBonus * eventCollectMult;
     if(roll < chance){
       var pool = COLLECTIBLES.filter(function(c){ return c.rarity===r.key; });
       var item = pool[Math.floor(Math.random()*pool.length)];
@@ -841,15 +959,27 @@ function rollForCollectible(){
 
 function breakBlock(){
   var tier = currentTier();
-  var value = Math.floor(tier.baseValue * state.fortuneMult * rankMult());
+  var value = Math.floor(tier.baseValue * state.fortuneMult * rankMult() * eventResourceMult);
   if(Math.random() < state.upgrades.greed*0.03){
     value *= 2; spawnFloatingText(BLOCK_CX, BLOCK_CY-55, 'GANÂNCIA! x2', '#ffd700', true);
   }
   state.resources += value; state.totalEarned += value; state.blocksBrokenInTier++;
+  state.stats.totalBlocksBroken++;
+  state.mastery[tier.id] = (state.mastery[tier.id]||0)+1;
 
+  var isBoss = state.tierIndex>0 && state.tierIndex%5===4;
+  if(isBoss){ value*=2; }
   var bColor = tier.speckle||tier.light;
-  spawnParticles(BLOCK_CX, BLOCK_CY, bColor, 26);
+  spawnParticles(BLOCK_CX, BLOCK_CY, bColor, isBoss?55:26);
   spawnFloatingText(BLOCK_CX, BLOCK_CY-40, '+'+format(value), '#ffe066', true);
+
+  if(isBoss){
+    spawnShockwave(BLOCK_CX,BLOCK_CY,160,bColor,0.9);
+    screenFlash={color:bColor,alpha:0.5};
+    shakeMag=Math.max(shakeMag,16);
+    beep(110,0.3,'sawtooth',0.2); beep(80,0.4,'square',0.15,0.1);
+    spawnFloatingText(BLOCK_CX,BLOCK_CY-55,'BOSS! x2','#ff5555',true);
+  }
 
   if(state.blocksBrokenInTier >= tier.goal && state.tierIndex < TIERS.length-1){
     spawnParticles(BLOCK_CX, BLOCK_CY, bColor, 40);
@@ -877,7 +1007,8 @@ function handleTap(x,y){
   if(!pointInBlock(x,y)) return;
   ensureAudio();
   var now = performance.now();
-  if(now - state.lastClickTime < 600){ state.comboCount = Math.min(20, state.comboCount+1); }
+  var comboWindow = 600 + state.tierIndex * 4; // 600ms at tier 0, up to ~716ms at tier 29
+  if(now - state.lastClickTime < comboWindow){ state.comboCount = Math.min(20, state.comboCount+1); }
   else { state.comboCount = 0; }
   state.lastClickTime = now;
 
@@ -886,8 +1017,13 @@ function handleTap(x,y){
 
   var isCrit = Math.random() < state.critChance;
   var dmg = state.clickPower * comboMult * (isCrit ? state.critMult : 1);
-  dmg = Math.max(1, Math.round(dmg));
+  dmg = Math.max(1, Math.round(dmg * eventClickMult));
+  if(eventHalfHp) dmg *= 2;
   state.blockHp -= dmg;
+
+  state.stats.totalClicks++;
+  if(isCrit) state.stats.totalCrits++;
+  if(state.comboCount>state.stats.bestCombo) state.stats.bestCombo=state.comboCount;
 
   var tier = currentTier();
   var hitColor = tier.speckle||tier.light;
@@ -920,6 +1056,68 @@ canvas.addEventListener('pointerdown', function(e){
 }, {passive:true});
 
 /* =========================================================
+   EVENTOS ALEATÓRIOS
+========================================================= */
+var EVENTS = [
+  {id:'richOre',name:'Veio de Minerio Raro!',desc:'Recursos em dobro!',color:'#ffd700',dur:12,
+   start:function(){}, end:function(){ eventResourceMult=1; showToast('Fim: Veio de Minerio','#aaa'); }},
+  {id:'energize',name:'Energizar!',desc:'Clique 3x mais forte!',color:'#ff5555',dur:10,
+   start:function(){}, end:function(){ eventClickMult=1; showToast('Fim: Energizar','#aaa'); }},
+  {id:'lucky',name:'Sorte do Mineiro!',desc:'Itens raros 5x mais faceis!',color:'#9c27b0',dur:20,
+   start:function(){}, end:function(){ eventCollectMult=1; showToast('Fim: Sorte do Mineiro','#aaa'); }},
+  {id:'frenzy',name:'Frenesi do Picareta!',desc:'Auto-clique rapido!',color:'#00e5ff',dur:8,
+   start:function(){}, end:function(){ eventFrenzy=0; showToast('Fim: Frenesi','#aaa'); }},
+  {id:'swift',name:'Mineracao Acelerada!',desc:'Blocos com metade da vida!',color:'#4caf50',dur:15,
+   start:function(){}, end:function(){ eventHalfHp=0; showToast('Fim: Acelerada','#aaa'); }}
+];
+var activeEvent = null;
+var eventTimer = 0;
+var eventResourceMult = 1;
+var eventClickMult = 1;
+var eventCollectMult = 1;
+var eventFrenzy = 0;
+var eventHalfHp = 0;
+var frenzyAccum = 0;
+var eventBanner = document.getElementById('eventBanner');
+var eventBannerName = eventBanner.querySelector('.ev-name');
+var eventBannerTimer = eventBanner.querySelector('.ev-timer');
+
+function eventScale(){
+  var ti=state.tierIndex;
+  if(ti<6) return 0.6;
+  if(ti<16) return 1.0;
+  return 1.4;
+}
+function startRandomEvent(){
+  var e = EVENTS[Math.floor(Math.random()*EVENTS.length)];
+  var scale = eventScale();
+  activeEvent = { id:e.id, timer:e.dur*scale };
+  e.start();
+  if(e.id==='richOre') eventResourceMult=1+scale;
+  if(e.id==='energize') eventClickMult=1+scale*2;
+  if(e.id==='lucky') eventCollectMult=1+scale*4;
+  if(e.id==='frenzy') eventFrenzy=scale;
+  if(e.id==='swift') eventHalfHp=scale;
+  eventBannerName.textContent = e.name;
+  eventBanner.style.display = 'block';
+  eventBanner.style.background = e.color;
+  eventBanner.style.color = '#fff';
+  eventBanner.style.borderColor = '#000';
+  ensureAudio();
+  beep(660,0.1,'triangle',0.14); beep(880,0.1,'triangle',0.12,0.06); beep(1100,0.15,'triangle',0.10,0.12);
+  spawnFloatingText(BLOCK_CX, BLOCK_CY-90, e.name, e.color, true);
+  spawnParticles(BLOCK_CX, BLOCK_CY, e.color, 25);
+}
+function endEvent(){
+  if(!activeEvent) return;
+  for(var i=0;i<EVENTS.length;i++){
+    if(EVENTS[i].id===activeEvent.id){ EVENTS[i].end(); break; }
+  }
+  activeEvent = null;
+  eventBanner.style.display = 'none';
+}
+
+/* =========================================================
    LOOP PRINCIPAL
 ========================================================= */
 var lastTime = performance.now();
@@ -930,10 +1128,13 @@ function update(dt){
     var gain = state.idlePerSec * rankMult() * state.fortuneMult * dt;
     state.resources += gain; state.totalEarned += gain;
   }
-  if(performance.now() - state.lastClickTime > 600 && state.comboCount > 0){
+  var comboDecayThresh = 600 + state.tierIndex * 4;
+  if(performance.now() - state.lastClickTime > comboDecayThresh && state.comboCount > 0){
     state.comboCount = Math.max(0, state.comboCount - dt*8);
   }
-  shakeMag *= Math.pow(0.001, dt); if(shakeMag < 0.05) shakeMag = 0;
+  shakeMag *= Math.pow(0.001, dt);
+  if(state.tierIndex>20) shakeMag = Math.max(shakeMag, 0.15 + (state.tierIndex-20)*0.02);
+  if(shakeMag < 0.05) shakeMag = 0;
   punch *= Math.pow(0.0005, dt); if(punch < 0.02) punch = 0;
 
   for(var i=particles.length-1;i>=0;i--){
@@ -1010,27 +1211,71 @@ function update(dt){
     }
   }
 
+  if(!activeEvent){
+    eventTimer+=dt;
+    var ti=state.tierIndex;
+    var minGap=ti<6?45:(ti<16?22:10);
+    var maxGap=ti<6?80:(ti<16?40:20);
+    var chance=ti<6?0.35:(ti<16?0.55:0.75);
+    if(eventTimer>minGap+Math.random()*(maxGap-minGap)){
+      eventTimer=0;
+      if(Math.random()<chance) startRandomEvent();
+    }
+  } else {
+    activeEvent.timer-=dt;
+    if(eventFrenzy>0){
+      frenzyAccum+=dt;
+      if(frenzyAccum>0.1){
+        frenzyAccum=0;
+        var dmg=state.clickPower*(1+(state.comboCount/20)*0.5)*(1+state.upgrades.berserker*0.03*(state.comboCount/20));
+        state.blockHp-=Math.max(1,Math.round(dmg));
+        spawnParticles(BLOCK_CX+(Math.random()-0.5)*40,BLOCK_CY+(Math.random()-0.5)*40,'#00e5ff',1);
+        if(state.blockHp<=0) breakBlock();
+      }
+    }
+    eventBannerTimer.textContent=Math.ceil(activeEvent.timer)+'s';
+    if(activeEvent.timer<=0) endEvent();
+  }
+
+  state.stats.playTime = (state.stats.playTime||0) + dt;
+
   hudTimer += dt;
   if(hudTimer > 0.1){ hudTimer = 0; updateHUD(); }
 }
 
 function drawBackground(now){
+  var ti=state.tierIndex;
+  var heat=Math.min(1,ti/20);
+  var r1=Math.round(43+heat*60), g1=Math.round(36-heat*10), b1=Math.round(28-heat*15);
+  var r2=Math.round(16+heat*40), g2=Math.round(13-heat*5), b2=Math.round(9-heat*5);
   var grad = ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0,'#2b241c'); grad.addColorStop(1,'#100d09');
+  grad.addColorStop(0,'rgb('+r1+','+g1+','+b1+')');
+  grad.addColorStop(1,'rgb('+r2+','+g2+','+b2+')');
   ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
-  ctx.globalAlpha = 0.35;
-  for(var i=0;i<18;i++){
-    var bx = (i*53) % W; var by = 40 + ((i*97) % (H-120));
+  var gridCount=18+Math.floor(heat*12);
+  ctx.globalAlpha = 0.25+heat*0.15;
+  for(var i=0;i<gridCount;i++){
+    var bx = (i*53+ti*7) % W; var by = 40 + ((i*97+ti*11) % (H-120));
     ctx.fillStyle = (i%2===0)? '#3c332a' : '#221c15';
-    ctx.fillRect(bx, by, 34, 34);
+    ctx.fillRect(bx, by, 30+Math.floor(heat*8), 30+Math.floor(heat*8));
   }
   ctx.globalAlpha = 1;
-  var glow1 = ctx.createRadialGradient(50,150,5,50,150,140);
-  glow1.addColorStop(0,'rgba(255,200,80,0.25)'); glow1.addColorStop(1,'rgba(255,200,80,0)');
+  var glowSize=140+Math.floor(heat*80);
+  var glowA=0.25+heat*0.2;
+  var glow1 = ctx.createRadialGradient(50,150,5,50,150,glowSize);
+  glow1.addColorStop(0,'rgba(255,200,80,'+glowA+')'); glow1.addColorStop(1,'rgba(255,200,80,0)');
   ctx.fillStyle = glow1; ctx.fillRect(0,0,W,H);
-  var glow2 = ctx.createRadialGradient(W-50,450,5,W-50,450,140);
-  glow2.addColorStop(0,'rgba(255,200,80,0.2)'); glow2.addColorStop(1,'rgba(255,200,80,0)');
+  var glow2 = ctx.createRadialGradient(W-50,450,5,W-50,450,glowSize);
+  glow2.addColorStop(0,'rgba(255,150,50,'+(glowA*0.2+heat*0.3)+')'); glow2.addColorStop(1,'rgba(255,150,50,0)');
   ctx.fillStyle = glow2; ctx.fillRect(0,0,W,H);
+  if(heat>0.5){
+    var sp=heat*0.08;
+    ctx.globalAlpha=sp*0.5;
+    for(i=0;i<Math.floor(heat*8);i++){
+      ctx.fillStyle='#ff8844'; ctx.fillRect(Math.floor(Math.random()*W),Math.floor(Math.random()*H),2,2);
+    }
+    ctx.globalAlpha=1;
+  }
 }
 
 function drawMiners(now){
@@ -1096,6 +1341,22 @@ function drawBlock(now){
   if(comboFlashTimer>0){
     var cf=comboFlashTimer/0.35;
     ctx.globalAlpha=cf*0.4; ctx.fillStyle='#ffd700'; ctx.fillRect(x-6,y-6,size+12,size+12); ctx.globalAlpha=1;
+  }
+
+  if(activeEvent){
+    var evColor='#fff';
+    for(var ei=0;ei<EVENTS.length;ei++){ if(EVENTS[ei].id===activeEvent.id){ evColor=EVENTS[ei].color; break; } }
+    var ea=0.12+Math.sin(now/120)*0.08;
+    ctx.globalAlpha=ea; ctx.fillStyle=evColor; ctx.fillRect(x-5,y-5,size+10,size+10); ctx.globalAlpha=1;
+  }
+
+  var isBoss = state.tierIndex>0 && state.tierIndex%5===4;
+  if(isBoss){
+    var bp=0.15+Math.sin(now/200)*0.1;
+    ctx.globalAlpha=bp; ctx.strokeStyle='#ff5555'; ctx.lineWidth=5; ctx.strokeRect(x-4,y-4,size+8,size+8); ctx.globalAlpha=1;
+    ctx.fillStyle='#ff5555'; ctx.font="8px 'Press Start 2P'"; ctx.textAlign='center';
+    ctx.fillText('BOSS',BLOCK_CX,y-16);
+    var sk = makeIcon('skull'); ctx.drawImage(sk,BLOCK_CX-8,y-32,16,16);
   }
 
   ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3; ctx.strokeRect(x,y,size,size);
@@ -1178,6 +1439,84 @@ var tierDisplay = document.getElementById('tierDisplay');
 var comboBar = document.getElementById('comboBar');
 var rankName = document.getElementById('rankName');
 var lastRankStep = 0;
+var pendingAchNotify = '';
+
+function checkAchievements(){
+  var a=state.achievements;
+  for(var i=0;i<ACHIEVEMENTS.length;i++){
+    var ach=ACHIEVEMENTS[i];
+    if(!a[ach.id] && ach.req(state)){
+      a[ach.id]=Date.now();
+      state.newAchievements=(state.newAchievements||0)+1;
+      pendingAchNotify=ach;
+      recomputeStats();
+    }
+  }
+}
+
+function renderAchievements(){
+  state.newAchievements=0;
+  var el=document.getElementById('achievementList');
+  el.style.display='block';
+  document.getElementById('statsContent').style.display='none';
+  var html='';
+  for(var i=0;i<ACHIEVEMENTS.length;i++){
+    var a=ACHIEVEMENTS[i];
+    var unlocked=!!state.achievements[a.id];
+    var catColor=ACH_CATEGORIES[a.cat]||'#888';
+    var showName=a.secret&&!unlocked?'???':(unlocked?'> ':'')+a.name;
+    var showDesc=a.secret&&!unlocked?'???':a.desc;
+    var showReward=a.secret&&!unlocked?'???':a.reward;
+    html+='<div class="ach-card'+(unlocked?' unlocked':'')+'">';
+    html+='<div class="ach-icon">'+iconEl('star',unlocked?catColor:'#666',24).innerHTML+'</div>';
+    html+='<div class="ach-info"><div class="ach-name" style="color:'+(unlocked?catColor:(a.secret?'#888':catColor))+'">'+showName+'</div>';
+    html+='<div class="ach-desc">'+showDesc+'</div>';
+    html+='<div class="ach-reward">'+showReward+'</div></div>';
+    html+='<div class="ach-status '+(unlocked?'done':'locked')+'">'+(unlocked?'FEITO':'BLOQ')+'</div>';
+    html+='</div>';
+  }
+  html+='<div style="margin-top:12px;text-align:center;"><button class="mc-btn" id="shareAchBtn" style="font-size:7px;padding:8px;width:100%;">COMPARTILHAR PATENTE</button></div>';
+  el.innerHTML=html;
+  var shareBtn=document.getElementById('shareAchBtn');
+  if(shareBtn){
+    shareBtn.addEventListener('click',function(){
+      var ri=getRankInfo(getRankStep(state.diamonds));
+      var txt='🪨 Block Miner Clicker — Patente: '+ri.name+' (+'+Math.round((rankMult()-1)*100)+'%) | Conquistas: '+
+        (function(){var n=0;for(var k in state.achievements)n++;return n;})()+'/'+ACHIEVEMENTS.length;
+      if(navigator.share){ navigator.share({title:'Block Miner Clicker',text:txt}); }
+      else { navigator.clipboard.writeText(txt).then(function(){showToast('Copiado! Compartilhe onde quiser','#f6d32d');}); }
+    });
+  }
+}
+
+function renderStats(){
+  var el=document.getElementById('statsContent');
+  el.style.display='block';
+  document.getElementById('achievementList').style.display='none';
+  var s=state.stats;
+  var collected=0; for(var k in state.collection) collected++;
+  var totalUpgrades=0; for(var k2 in state.upgrades) totalUpgrades+=state.upgrades[k2];
+  var playHours=Math.floor((s.playTime||0)/3600);
+  var playMins=Math.floor(((s.playTime||0)%3600)/60);
+  var achs=0; for(var k3 in state.achievements) achs++;
+  var bestTier=TIERS[state.tierIndex];
+  el.innerHTML='<div class="stats-panel">'+
+    '<b>Tempo de jogo:</b> '+playHours+'h '+playMins+'m<br>'+
+    '<b>Cliques totais:</b> '+format(s.totalClicks)+'<br>'+
+    '<b>Blocos quebrados:</b> '+format(s.totalBlocksBroken)+'<br>'+
+    '<b>Criticos:</b> '+format(s.totalCrits)+' ('+(s.totalClicks>0?Math.round(s.totalCrits/s.totalClicks*100):0)+'%)<br>'+
+    '<b>Melhor combo:</b> '+s.bestCombo+'<br>'+
+    '<b>Prestigios:</b> '+s.prestigeCount+'<br>'+
+    '<b>Diamantes:</b> '+state.diamonds+'<br>'+
+    '<b>Itens:</b> '+collected+'/'+COLLECTIBLES.length+'<br>'+
+    '<b>Upgrades:</b> '+totalUpgrades+'<br>'+
+    '<b>Conquistas:</b> '+achs+'/'+ACHIEVEMENTS.length+'<br>'+
+    '<b>Bloco atual:</b> '+bestTier.name+' ('+format(state.blockHp)+'/'+format(state.blockMaxHp)+' HP)<br>'+
+    '<b>Total minerado:</b> '+format(state.totalEarned)+'<br>'+
+    '<b>Dano por clique:</b> '+format(Math.round(state.clickPower))+'<br>'+
+    '<b>Idle/seg:</b> '+format(Math.round(state.idlePerSec*rankMult()*state.fortuneMult))+
+  '</div>';
+}
 
 function countBuyableUpgrades(){
   var c=0;
@@ -1207,17 +1546,33 @@ function updateHUD(){
   if(step > lastRankStep){ showRankUp(getRankInfo(step)); }
   lastRankStep = step;
 
+  checkAchievements();
+  if(pendingAchNotify){
+    var pa=pendingAchNotify;
+    pendingAchNotify='';
+    var catColor=ACH_CATEGORIES[pa.cat]||'#ffd700';
+    showToast('CONQUISTA: '+pa.name,catColor);
+    spawnFloatingText(BLOCK_CX,BLOCK_CY-100,'CONQUISTA! '+pa.name,catColor,true);
+    ensureAudio();
+    beep(880,0.12,'triangle',0.18,0);
+    beep(1100,0.12,'triangle',0.14,0.08);
+    beep(1320,0.2,'triangle',0.12,0.16);
+    spawnParticles(BLOCK_CX,BLOCK_CY,catColor,20);
+  }
+
   var bShop=countBuyableUpgrades();
   var bPg=countPrestigeGain();
   var bColl=state.newCollectionItems||0;
+  var bAch=state.newAchievements||0;
   [
     ['badgeShop','badgeShopSt'],
     ['badgePrestige','badgePrestigeSt'],
-    ['badgeCollection','badgeCollectionSt']
+    ['badgeCollection','badgeCollectionSt'],
+    ['badgeAchievements','badgeAchievementsSt']
   ].forEach(function(ids){
     var el1=document.getElementById(ids[0]);
     var el2=document.getElementById(ids[1]);
-    var n=ids[0]==='badgeShop'?bShop:(ids[0]==='badgePrestige'?bPg:bColl);
+    var n=ids[0]==='badgeShop'?bShop:(ids[0]==='badgePrestige'?bPg:(ids[0]==='badgeCollection'?bColl:bAch));
     if(el1){ el1.textContent=n>0?n:''; el1.classList.toggle('show',n>0); }
     if(el2){ el2.textContent=n>0?n:''; el2.classList.toggle('show',n>0); }
   });
@@ -1298,6 +1653,7 @@ function buyPickaxe(idx){
   if(state.resources < pk.cost) return;
   state.resources -= pk.cost;
   state.pickaxeIndex = idx;
+  if(idx===PICKAXES.length-1) state.stats.boughtAllPickaxes=true;
   recomputeStats();
   ensureAudio(); playBuySound();
   showToast('Picareta equipada: '+pk.name, pk.color);
@@ -1322,6 +1678,14 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     btn.classList.add('active');
     activeTab = btn.getAttribute('data-tab');
     renderShop();
+  });
+});
+document.querySelectorAll('[data-achtab]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('[data-achtab]').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    if(btn.getAttribute('data-achtab')==='list') renderAchievements();
+    else renderStats();
   });
 });
 
@@ -1357,6 +1721,7 @@ function doPrestige(){
   var gain = calcDiamondGain(state.totalEarned);
   if(gain <= 0) return;
   state.diamonds += gain;
+  state.stats.prestigeCount++;
   state.resources = 0; state.totalEarned = 0; state.pickaxeIndex = 0;
   state.upgrades = {
     fortune:0, luck:0, precision:0, berserker:0, midnight:0, greed:0, fragment:0, minerLuck:0,
@@ -1428,6 +1793,7 @@ function closePanel(id){
 document.getElementById('btnShop').addEventListener('click', function(){ renderShop(); openPanel('shopOverlay'); });
 document.getElementById('btnPrestige').addEventListener('click', function(){ renderPrestige(); openPanel('prestigeOverlay'); });
 document.getElementById('btnCollection').addEventListener('click', function(){ renderCollection(); openPanel('collectionOverlay'); });
+document.getElementById('btnAchievements').addEventListener('click', function(){ renderAchievements(); openPanel('achievementOverlay'); });
 document.querySelectorAll('[data-close]').forEach(function(el){
   el.addEventListener('click', function(){ closePanel(el.getAttribute('data-close')); });
 });
@@ -1442,6 +1808,7 @@ document.querySelectorAll('.st-tab').forEach(function(tab){
     if(target==='shopOverlay') renderShop();
     else if(target==='prestigeOverlay') renderPrestige();
     else if(target==='collectionOverlay') renderCollection();
+    else if(target==='achievementOverlay') renderAchievements();
     openPanel(target);
   });
 });
