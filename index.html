@@ -101,12 +101,46 @@
     width:20px; height:20px; line-height:16px; text-align:center; cursor:pointer; font-size:9px; padding:0;
   }
 
-  .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; }
+  .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; flex-shrink:0; }
   .sheet-header .close-x{ background:var(--danger); color:#fff; border:2px solid #000; width:22px; height:22px; text-align:center; line-height:20px; cursor:pointer; font-size:10px; }
-  .tabs{display:flex; gap:3px; padding:8px 8px 0;}
+  .tabs{display:flex; gap:3px; padding:8px 8px 0; flex-shrink:0;}
   .tab-btn{ flex:1; font-family:'Press Start 2P', monospace; font-size:6.5px; padding:8px 1px; cursor:pointer; background:var(--panel-dark); color:#eee; border:2px solid var(--panel-shadow); }
   .tab-btn.active{background:var(--gold); color:#3a2a00;}
-  #shopList, #prestigeContent, #offlineContent, #collectionGrid{ padding:10px; overflow-y:auto; font-size:8px; }
+  .scroll-area{
+    flex:1 1 auto; min-height:0;
+    padding:10px 24px 10px 10px; font-size:8px;
+    overflow-y:auto; overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+    scrollbar-width:none;
+    outline:none;
+  }
+  .scroll-area::-webkit-scrollbar{ width:0; height:0; }
+
+  /* barra de rolagem customizada (setinhas + thumb arrastável) */
+  .scroll-rail{
+    position:absolute; right:3px; z-index:9;
+    display:none; flex-direction:column; align-items:center; gap:3px;
+    width:17px; pointer-events:auto;
+  }
+  .scroll-rail .sr-btn{
+    width:17px; height:17px; padding:0; line-height:1;
+    background:var(--panel-dark); color:var(--gold);
+    border:2px solid var(--panel-shadow);
+    font-family:'Press Start 2P', monospace; font-size:7px; cursor:pointer;
+  }
+  .scroll-rail .sr-btn:active{ background:var(--gold); color:#3a2a00; }
+  .scroll-rail .sr-btn:disabled{ opacity:.3; cursor:default; }
+  .scroll-rail .sr-track{
+    position:relative; flex:1; width:11px;
+    background:rgba(0,0,0,.28); border:2px solid var(--panel-shadow);
+  }
+  .scroll-rail .sr-thumb{
+    position:absolute; left:0; right:0; top:0; height:30px;
+    background:var(--gold); border:1px solid #3a2a00; cursor:grab;
+  }
+  .scroll-rail .sr-thumb:active{ cursor:grabbing; }
 
   .upgrade-card{
     display:flex; align-items:center; gap:8px; background:#dcdcdc;
@@ -134,7 +168,6 @@
   #rankProgressWrap{ background:#000; height:14px; border:2px solid #000; margin:6px 0 14px; }
   #rankProgressBar{ height:100%; width:0%; background:linear-gradient(90deg,#c9a227,#f6d32d); }
 
-  #achievementList, #statsContent{ padding:10px; overflow-y:auto; font-size:8px; }
   .ach-card{
     display:flex; align-items:center; gap:8px; background:#dcdcdc;
     border-top:2px solid #fff; border-left:2px solid #fff; border-bottom:2px solid #6b6b6b; border-right:2px solid #6b6b6b;
@@ -194,7 +227,7 @@
   .sheet{
     width:100%; max-height:95%; background:var(--panel);
     border-top:4px solid var(--panel-light); border-left:4px solid var(--panel-light); border-right:4px solid var(--panel-shadow);
-    display:flex; flex-direction:column; color:var(--ink); overflow:hidden;
+    display:flex; flex-direction:column; color:var(--ink); overflow:hidden; position:relative;
   }
 
   /* Tablet: canvas cresce, overlays mais largos */
@@ -243,11 +276,11 @@
     }
     .sidebar-body .panel-overlay{
       position:static; inset:auto; background:none; align-items:stretch;
-      flex:1; display:flex;
+      flex:1; display:flex; min-height:0; overflow:hidden;
     }
     .sidebar-body .panel-overlay.hidden{display:none;}
     .sheet{
-      width:100%; max-height:none; height:100%;
+      width:100%; max-height:none; height:100%; min-height:0;
       border:none; border-top:3px solid var(--panel-light);
     }
     .sheet-header{ padding:14px 16px; font-size:13px; flex-shrink:0; }
@@ -257,7 +290,7 @@
     .tabs{ padding:8px 12px 0; gap:4px; }
     .tab-btn{ font-size:8px; padding:10px 4px; }
 
-    #shopList, #prestigeContent, #offlineContent, #collectionGrid{ padding:14px; font-size:9px; }
+    .scroll-area{ padding:14px 30px 14px 14px; font-size:9px; }
     #collectionGrid{ grid-template-columns:repeat(3,1fr); gap:10px; }
 
     .upgrade-card{ padding:9px; margin-bottom:8px; gap:10px; }
@@ -284,20 +317,6 @@
     #prestigeContent p{ font-size:9px; line-height:2; }
     .col-item .ci-name{ font-size:6.5px; }
     .col-item .ci-rarity{ font-size:6px; }
-
-    /* scrollbar estilizada */
-    #shopList::-webkit-scrollbar, #prestigeContent::-webkit-scrollbar,
-    #offlineContent::-webkit-scrollbar, #collectionGrid::-webkit-scrollbar{
-      width:8px;
-    }
-    #shopList::-webkit-scrollbar-track, #prestigeContent::-webkit-scrollbar-track,
-    #offlineContent::-webkit-scrollbar-track, #collectionGrid::-webkit-scrollbar-track{
-      background:var(--panel-dark);
-    }
-    #shopList::-webkit-scrollbar-thumb, #prestigeContent::-webkit-scrollbar-thumb,
-    #offlineContent::-webkit-scrollbar-thumb, #collectionGrid::-webkit-scrollbar-thumb{
-      background:var(--panel-shadow); border:1px solid var(--panel-light);
-    }
   }
 </style>
 </head>
@@ -350,14 +369,14 @@
             <div class="tab-btn" data-tab="enchant">ENCANTOS</div>
             <div class="tab-btn" data-tab="miner">MINERADORES</div>
           </div>
-          <div id="shopList"></div>
+          <div id="shopList" class="scroll-area" tabindex="0"></div>
         </div>
       </div>
 
       <div class="panel-overlay hidden" id="prestigeOverlay">
         <div class="sheet">
           <div class="sheet-header"><span>PATENTE DE MINERADOR</span><span class="close-x" data-close="prestigeOverlay">✕</span></div>
-          <div id="prestigeContent"></div>
+          <div id="prestigeContent" class="scroll-area" tabindex="0"></div>
         </div>
       </div>
 
@@ -368,15 +387,15 @@
             <div class="tab-btn active" data-achtab="list">LISTA</div>
             <div class="tab-btn" data-achtab="stats">ESTATÍSTICAS</div>
           </div>
-          <div id="achievementList"></div>
-          <div id="statsContent" style="display:none;"></div>
+          <div id="achievementList" class="scroll-area" tabindex="0"></div>
+          <div id="statsContent" class="scroll-area" tabindex="0" style="display:none;"></div>
         </div>
       </div>
 
       <div class="panel-overlay hidden" id="collectionOverlay">
         <div class="sheet">
           <div class="sheet-header"><span id="collectionHeader">MURAL DE RARIDADES</span><span class="close-x" data-close="collectionOverlay">✕</span></div>
-          <div id="collectionGrid"></div>
+          <div id="collectionGrid" class="scroll-area" tabindex="0"></div>
         </div>
       </div>
 
@@ -387,7 +406,7 @@
 <div class="panel-overlay hidden" id="offlineOverlay">
   <div class="sheet" style="max-width:500px; margin:0 auto;">
     <div class="sheet-header"><span>BEM-VINDO DE VOLTA</span><span class="close-x" data-close="offlineOverlay">✕</span></div>
-    <div id="offlineContent"></div>
+    <div id="offlineContent" class="scroll-area" tabindex="0"></div>
   </div>
 </div>
 
@@ -1873,6 +1892,83 @@ if(window.innerWidth >= 1024 && document.getElementById('offlineOverlay').classL
   openPanel('shopOverlay');
 }
 
+})();
+</script>
+<script>
+/* Barra de rolagem customizada: setinhas + thumb arrastável nas listas das sheets */
+(function () {
+  var AREAS = ['shopList', 'prestigeContent', 'offlineContent', 'collectionGrid', 'achievementList', 'statsContent'];
+
+  AREAS.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var sheet = el.closest('.sheet');
+    if (!sheet) return;
+
+    var rail = document.createElement('div');
+    rail.className = 'scroll-rail';
+    rail.innerHTML =
+      '<button class="sr-btn sr-up" type="button" aria-label="Rolar para cima">&#9650;</button>' +
+      '<div class="sr-track"><div class="sr-thumb"></div></div>' +
+      '<button class="sr-btn sr-down" type="button" aria-label="Rolar para baixo">&#9660;</button>';
+    sheet.appendChild(rail);
+
+    var up = rail.querySelector('.sr-up');
+    var down = rail.querySelector('.sr-down');
+    var track = rail.querySelector('.sr-track');
+    var thumb = rail.querySelector('.sr-thumb');
+
+    function page() { return Math.max(80, el.clientHeight * 0.6); }
+    up.addEventListener('click', function () { el.scrollBy({ top: -page(), behavior: 'smooth' }); });
+    down.addEventListener('click', function () { el.scrollBy({ top: page(), behavior: 'smooth' }); });
+
+    function scrollToPointer(e) {
+      var travel = track.clientHeight - thumb.offsetHeight;
+      if (travel <= 0) return;
+      var rect = track.getBoundingClientRect();
+      var ratio = (e.clientY - rect.top - thumb.offsetHeight / 2) / travel;
+      ratio = Math.max(0, Math.min(1, ratio));
+      el.scrollTop = ratio * (el.scrollHeight - el.clientHeight);
+    }
+
+    var dragging = false;
+    thumb.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      try { thumb.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
+    });
+    thumb.addEventListener('pointermove', function (e) { if (dragging) scrollToPointer(e); });
+    thumb.addEventListener('pointerup', function () { dragging = false; });
+    thumb.addEventListener('pointercancel', function () { dragging = false; });
+    track.addEventListener('pointerdown', function (e) {
+      if (e.target !== thumb) scrollToPointer(e);
+    });
+
+    function update() {
+      var max = el.scrollHeight - el.clientHeight;
+      if (!el.getClientRects().length || max <= 4) { rail.style.display = 'none'; return; }
+      rail.style.display = 'flex';
+
+      var sheetRect = sheet.getBoundingClientRect();
+      var areaRect = el.getBoundingClientRect();
+      rail.style.top = Math.round(areaRect.top - sheetRect.top - sheet.clientTop) + 'px';
+      rail.style.height = Math.round(areaRect.height) + 'px';
+
+      var trackH = track.clientHeight;
+      var thumbH = Math.max(26, Math.round(trackH * Math.min(1, el.clientHeight / el.scrollHeight)));
+      thumb.style.height = thumbH + 'px';
+      var travel = Math.max(0, trackH - thumbH);
+      thumb.style.transform = 'translateY(' + Math.round(travel * (el.scrollTop / max)) + 'px)';
+
+      up.disabled = el.scrollTop <= 1;
+      down.disabled = el.scrollTop >= max - 1;
+    }
+
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    setInterval(update, 300);
+    update();
+  });
 })();
 </script>
 <script>
