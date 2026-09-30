@@ -1,0 +1,12 @@
+{
+  "name": "block-miner-clicker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jogo idle clicker de mineração com estética pixel art (PWA)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "validate": "node scripts/validate.js",
+    "release": "node scripts/release.js"
+  }
+}
