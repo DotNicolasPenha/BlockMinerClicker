@@ -77,6 +77,30 @@
   #eventBanner .ev-name{ font-size:9px; font-weight:bold; }
   #eventBanner .ev-timer{ font-size:11px; margin-top:2px; }
 
+  #installBanner{
+    position:absolute; left:8px; right:8px; bottom:52px; z-index:6;
+    display:none; align-items:center; gap:6px;
+    background:var(--gold); color:#3a2a00;
+    border-top:3px solid #fff6c0; border-left:3px solid #fff6c0;
+    border-bottom:3px solid #a88b00; border-right:3px solid #a88b00;
+    font-size:7px; line-height:1.6; padding:7px 8px; pointer-events:auto;
+  }
+  #installBanner .ib-text{ flex:1; }
+  #installBanner .ib-btn{
+    background:var(--panel); color:var(--ink);
+    border-top:3px solid var(--panel-light); border-left:3px solid var(--panel-light);
+    border-bottom:3px solid var(--panel-shadow); border-right:3px solid var(--panel-shadow);
+    font-family:'Press Start 2P', monospace; font-size:7px; padding:7px 8px; cursor:pointer; white-space:nowrap;
+  }
+  #installBanner .ib-btn:active{
+    border-top:3px solid var(--panel-shadow); border-left:3px solid var(--panel-shadow);
+    border-bottom:3px solid var(--panel-light); border-right:3px solid var(--panel-light);
+  }
+  #installBanner .ib-close{
+    background:var(--danger); color:#fff; border:2px solid #000;
+    width:20px; height:20px; line-height:16px; text-align:center; cursor:pointer; font-size:9px; padding:0;
+  }
+
   .sheet-header{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:3px solid var(--panel-shadow); font-size:10px; }
   .sheet-header .close-x{ background:var(--danger); color:#fff; border:2px solid #000; width:22px; height:22px; text-align:center; line-height:20px; cursor:pointer; font-size:10px; }
   .tabs{display:flex; gap:3px; padding:8px 8px 0;}
@@ -194,6 +218,7 @@
     }
     #gameCanvas{ width:100%; height:100%; }
     #bottomNav{ display:none; }
+    #installBanner{ bottom:8px; }
     #hud{ pointer-events:none; }
 
     #sidebar{
@@ -294,6 +319,12 @@
 
     <div id="comboBarWrap"><div id="comboBar"></div></div>
     <div id="eventBanner" class="pixel-panel"><div class="ev-name"></div><div class="ev-timer"></div></div>
+
+    <div id="installBanner" class="pixel-panel">
+      <span class="ib-text">INSTALAR O JOGO NA TELA</span>
+      <button class="ib-btn" id="btnInstall">INSTALAR</button>
+      <button class="ib-close" id="btnInstallClose" title="Fechar">✕</button>
+    </div>
 
     <div id="bottomNav">
       <button class="mc-btn" id="btnShop">LOJA<span class="badge" id="badgeShop"></span></button>
@@ -1842,6 +1873,60 @@ if(window.innerWidth >= 1024 && document.getElementById('offlineOverlay').classL
   openPanel('shopOverlay');
 }
 
+})();
+</script>
+<script>
+/* PWA: botão de instalação (beforeinstallprompt + iOS manual) */
+(function () {
+  var banner = document.getElementById('installBanner');
+  var text = banner.querySelector('.ib-text');
+  var btn = document.getElementById('btnInstall');
+  var close = document.getElementById('btnInstallClose');
+  var KEY = 'bmc_install_dismissed';
+  var dismissed = localStorage.getItem(KEY) === '1';
+  var deferred = null;
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+
+  function hide() { banner.style.display = 'none'; }
+  function show() { if (!dismissed && !standalone) banner.style.display = 'flex'; }
+  function dismiss() { dismissed = true; localStorage.setItem(KEY, '1'); hide(); }
+
+  if (standalone) { hide(); return; }
+
+  /* iOS/Safari não dispara beforeinstallprompt: instrução manual */
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    text.textContent = 'IOS: TOQUE EM COMPARTILHAR E DEPOIS "ADICIONAR À TELA DE INÍCIO"';
+    btn.textContent = 'OK';
+    btn.addEventListener('click', dismiss);
+    close.addEventListener('click', dismiss);
+    show();
+    return;
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    show();
+  });
+  window.addEventListener('appinstalled', function () {
+    deferred = null;
+    hide();
+  });
+
+  btn.addEventListener('click', function () {
+    if (!deferred) { dismiss(); return; }
+    deferred.prompt();
+    deferred.userChoice.then(function (choice) {
+      if (choice.outcome !== 'accepted') dismissed = true, localStorage.setItem(KEY, '1');
+      deferred = null;
+      hide();
+    });
+  });
+  close.addEventListener('click', function () {
+    if (deferred) { deferred = null; }
+    dismiss();
+  });
 })();
 </script>
 <script>
